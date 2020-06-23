@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 - `axi_to_mem`: AXI4+ATOP slave to control on chip memory.
+- `axi_lite_dw_converter`: Convert the data width of AXI4-Lite transactions. Emmits the
+  appropriate amount of downstream transactions to perform the whole requested access.
 
 ### Changed
 
