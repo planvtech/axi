@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 
 ### Added
+- `axi_lfsr` and `axi_lite_lfsr`: Add AXI4 and AXI4 Lite LFSR Subordinate devices.
 
 ### Changed
 
