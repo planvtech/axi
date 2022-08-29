@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   scoreboard class.
 
 ### Changed
+- `axi_demux`: Replace write FIFO (`w_fifo`) with a write credit counter.
 
 ### Fixed
 - `axi_lite_mux`: Reduce complexity of W channel at master port by removing an unnecessary
