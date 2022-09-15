@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 
 ### Added
+- Add FuseSoC and Vivado XSIM limited test to CI
 
 ### Changed
+- Improve compatibility with FuseSoC
 - Improve compatibility with Vivado XSIM
 
 ### Fixed
