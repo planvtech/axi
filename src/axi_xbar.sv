@@ -16,7 +16,7 @@
 // axi_xbar: Fully-connected AXI4+ATOP crossbar with an arbitrary number of slave and master ports.
 // See `doc/axi_xbar.md` for the documentation, including the definition of parameters and ports.
 //`include "convert.sh"
-module axi_xbar_snoop
+module axi_xbar
 import cf_math_pkg::idx_width;
 #(
   parameter axi_pkg::xbar_cfg_t Cfg                                   = '0,
@@ -336,41 +336,14 @@ import cf_math_pkg::idx_width;
   slv_req_t   [Cfg.NoSlvPorts-1:0]  slv_reqs;
   slv_resp_t  [Cfg.NoSlvPorts-1:0]  slv_resps;
 
-
-  // snoop channel conversion
-  `AXI_TYPEDEF_S_AW_CHAN_T(mst_s_aw_chan_t, addr_t, id_mst_t, user_t)
-  `AXI_TYPEDEF_S_AW_CHAN_T(slv_s_aw_chan_t, addr_t, id_slv_t, user_t)
-  `AXI_TYPEDEF_S_AR_CHAN_T(mst_s_ar_chan_t, addr_t, id_mst_t, user_t)
-  `AXI_TYPEDEF_S_AR_CHAN_T(slv_s_ar_chan_t, addr_t, id_slv_t, user_t)
-  `AXI_TYPEDEF_S_R_CHAN_T(mst_s_r_chan_t, data_t, id_mst_t, user_t)
-  `AXI_TYPEDEF_S_R_CHAN_T(slv_s_r_chan_t, data_t, id_slv_t, user_t)
-  `AXI_TYPEDEF_S_REQ_T(mst_s_req_t, mst_s_aw_chan_t, w_chan_t, mst_s_ar_chan_t)
-  `AXI_TYPEDEF_S_REQ_T(slv_s_req_t, slv_s_aw_chan_t, w_chan_t, slv_s_ar_chan_t)
-  `AXI_TYPEDEF_S_RESP_T(mst_s_resp_t, mst_b_chan_t, mst_s_r_chan_t)
-  `AXI_TYPEDEF_S_RESP_T(slv_s_resp_t, slv_b_chan_t, slv_s_r_chan_t)
-
-
-  mst_s_req_t   [Cfg.NoMstPorts-1:0]  mst_s_reqs;
-  mst_s_resp_t  [Cfg.NoMstPorts-1:0]  mst_s_resps;
-  slv_s_req_t   [Cfg.NoSlvPorts-1:0]  slv_s_reqs;
-  slv_s_resp_t  [Cfg.NoSlvPorts-1:0]  slv_s_resps;
-
-
-
-
   for (genvar i = 0; i < Cfg.NoMstPorts; i++) begin : gen_assign_mst
     `AXI_ASSIGN_FROM_REQ(mst_ports[i], mst_reqs[i])
     `AXI_ASSIGN_TO_RESP(mst_resps[i], mst_ports[i])
-    `AXI_ASSIGN_FROM_REQ(mst_ports[i], mst_s_reqs[i])
-    `AXI_ASSIGN_TO_RESP(mst_s_resps[i], mst_ports[i])
   end
 
   for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_assign_slv
     `AXI_ASSIGN_TO_REQ(slv_reqs[i], slv_ports[i])
     `AXI_ASSIGN_FROM_RESP(slv_ports[i], slv_resps[i])
-    `AXI_ASSIGN_TO_REQ(slv_s_reqs[i], slv_ports[i])
-    `AXI_ASSIGN_FROM_RESP(slv_ports[i], slv_s_resps[i])
-
   end
 
 
@@ -380,28 +353,28 @@ import cf_math_pkg::idx_width;
     .Cfg  (Cfg),
     .ATOPs          ( ATOPS         ),
     .Connectivity   ( CONNECTIVITY  ),
-    .slv_aw_chan_t  ( slv_s_aw_chan_t ),
-    .mst_aw_chan_t  ( mst_s_aw_chan_t ),
+    .slv_aw_chan_t  ( slv_aw_chan_t ),
+    .mst_aw_chan_t  ( mst_aw_chan_t ),
     .w_chan_t       ( w_chan_t      ),
     .slv_b_chan_t   ( slv_b_chan_t  ),
     .mst_b_chan_t   ( mst_b_chan_t  ),
-    .slv_ar_chan_t  ( slv_s_ar_chan_t ),
-    .mst_ar_chan_t  ( mst_s_ar_chan_t ),
-    .slv_r_chan_t   ( slv_s_r_chan_t  ),
-    .mst_r_chan_t   ( mst_s_r_chan_t  ),
-    .slv_req_t      ( slv_s_req_t     ),
-    .slv_resp_t     ( slv_s_resp_t    ),
-    .mst_req_t      ( mst_s_req_t     ),
-    .mst_resp_t     ( mst_s_resp_t    ),
+    .slv_ar_chan_t  ( slv_ar_chan_t ),
+    .mst_ar_chan_t  ( mst_ar_chan_t ),
+    .slv_r_chan_t   ( slv_r_chan_t  ),
+    .mst_r_chan_t   ( mst_r_chan_t  ),
+    .slv_req_t      ( slv_req_t     ),
+    .slv_resp_t     ( slv_resp_t    ),
+    .mst_req_t      ( mst_req_t     ),
+    .mst_resp_t     ( mst_resp_t    ),
     .rule_t         ( rule_t        )
   ) i_xbar (
     .clk_i,
     .rst_ni,
     .test_i,
-    .slv_ports_req_i  (slv_s_reqs ),
-    .slv_ports_resp_o (slv_s_resps),
-    .mst_ports_req_o  (mst_s_reqs ),
-    .mst_ports_resp_i (mst_s_resps),
+    .slv_ports_req_i  (slv_reqs ),
+    .slv_ports_resp_o (slv_resps),
+    .mst_ports_req_o  (mst_reqs ),
+    .mst_ports_resp_i (mst_resps),
     .addr_map_i,
     .en_default_mst_port_i,
     .default_mst_port_i
