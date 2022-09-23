@@ -840,24 +840,27 @@ package axi_test;
         };
       end else begin
         // Randomly pick a memory region
-        rand_success = std::randomize(mem_region_idx) with {
-          mem_region_idx < mem_map.size();
-        }; assert(rand_success);
+        mem_region_idx = $urandom_range(0,mem_map.size()-1);
+        // std::randomize(mem_region_idx) with {
+        //   mem_region_idx < mem_map.size();
+        // }; assert(rand_success);
         mem_region = mem_map[mem_region_idx];
       end
 
       // Randomly pick burst type.
-      rand_success = std::randomize(burst) with {
-        burst inside {this.allowed_bursts};
-      }; assert(rand_success);
+      burst = BURST_FIXED;
+      // rand_success = std::randomize(burst) with {
+      //   burst inside {this.allowed_bursts};
+      // }; assert(rand_success);
       ax_beat.ax_burst = burst;
       // Determine memory type.
       ax_beat.ax_cache = is_read ? axi_pkg::get_arcache(mem_region.mem_type) : axi_pkg::get_awcache(mem_region.mem_type);
       // Randomize beat size.
       if (TRAFFIC_SHAPING) begin
-        rand_success = std::randomize(cprob) with {
-          cprob >= 0; cprob < max_cprob;
-        }; assert(rand_success);
+        cprob = $urandom_range(0,max_cprob-1);
+        // rand_success = std::randomize(cprob) with {
+        //   cprob >= 0; cprob < max_cprob;
+        // }; assert(rand_success);
 
         for (int i = 0; i < traffic_shape.size(); i++)
           if (traffic_shape[i].cprob > cprob) begin
@@ -870,18 +873,20 @@ package axi_test;
 
         // Randomize address.  Make sure that the burst does not cross a 4KiB boundary.
         forever begin
-          rand_success = std::randomize(size) with {
-            2**size <= AXI_STRB_WIDTH;
-            2**size <= len;
-          }; assert(rand_success);
+          size  = $clog2(len);
+          // rand_success = std::randomize(size) with {
+          //   2**size <= AXI_STRB_WIDTH;
+          //   2**size <= len;
+          // }; assert(rand_success);
           ax_beat.ax_size = size;
           ax_beat.ax_len = ((len + (1 << size) - 1) >> size) - 1;
 
-          rand_success = std::randomize(addr) with {
-            addr >= mem_region.addr_begin;
-            addr <= mem_region.addr_end;
-            addr + len <= mem_region.addr_end;
-          }; assert(rand_success);
+          addr  = mem_region.addr_begin;
+          // rand_success = std::randomize(addr) with {
+          //   addr >= mem_region.addr_begin;
+          //   addr <= mem_region.addr_end;
+          //   addr + len <= mem_region.addr_end;
+         // }; assert(rand_success);
 
           if (ax_beat.ax_burst == axi_pkg::BURST_FIXED) begin
             if (((addr + 2**ax_beat.ax_size) & PFN_MASK) == (addr & PFN_MASK)) begin
@@ -897,23 +902,26 @@ package axi_test;
         // Randomize address.  Make sure that the burst does not cross a 4KiB boundary.
         forever begin
           // Randomize burst length.
-          rand_success = std::randomize(len) with {
-            len <= this.max_len;
-            (ax_beat.ax_burst == BURST_WRAP) ->
-                len inside {len_t'(1), len_t'(3), len_t'(7), len_t'(15)};
-          }; assert(rand_success);
-          rand_success = std::randomize(size) with {
-            2**size <= AXI_STRB_WIDTH;
-          }; assert(rand_success);
+          len = this.max_len;
+          // rand_success = std::randomize(len) with {
+          //   len <= this.max_len;
+          //   (ax_beat.ax_burst == BURST_WRAP) ->
+          //       len inside {len_t'(1), len_t'(3), len_t'(7), len_t'(15)};
+          // }; assert(rand_success);
+          size = $clog2(AXI_STRB_WIDTH)-1;
+          // rand_success = std::randomize(size) with {
+          //   2**size <= AXI_STRB_WIDTH;
+          // }; assert(rand_success);
           ax_beat.ax_size = size;
           ax_beat.ax_len = len;
 
           // Randomize address
-          rand_success = std::randomize(addr) with {
-            addr >= mem_region.addr_begin;
-            addr <= mem_region.addr_end;
-            addr + ((len + 1) << size) <= mem_region.addr_end;
-          }; assert(rand_success);
+          addr  = mem_region.addr_begin;
+          // rand_success = std::randomize(addr) with {
+          //   addr >= mem_region.addr_begin;
+          //   addr <= mem_region.addr_end;
+          //   addr + ((len + 1) << size) <= mem_region.addr_end;
+          // }; assert(rand_success);
 
           if (ax_beat.ax_burst == axi_pkg::BURST_FIXED) begin
             if (((addr + 2**ax_beat.ax_size) & PFN_MASK) == (addr & PFN_MASK)) begin
@@ -928,8 +936,10 @@ package axi_test;
       end
 
       ax_beat.ax_addr = addr;
-      rand_success = std::randomize(id); assert(rand_success);
-      rand_success = std::randomize(qos); assert(rand_success);
+      id  = 0;
+      qos = 0;
+      // rand_success = std::randomize(id); assert(rand_success);
+      // rand_success = std::randomize(qos); assert(rand_success);
       // The random ID *must* be legalized with `legalize_id()` before the beat is sent!  This is
       // currently done in the functions `create_aws()` and `send_ars()`.
       ax_beat.ax_id = id;
@@ -966,9 +976,10 @@ package axi_test;
           if (beat.ax_atop == axi_pkg::ATOP_ATOMICCMP) begin
             // Total data transferred in burst can be 2, 4, 8, 16, or 32 B.
             automatic int unsigned log_bytes;
-            rand_success = std::randomize(log_bytes) with {
-              log_bytes > 0; 2**log_bytes <= 32;
-            }; assert(rand_success);
+            log_bytes = 3;
+            // rand_success = std::randomize(log_bytes) with {
+            //   log_bytes > 0; 2**log_bytes <= 32;
+            // }; assert(rand_success);
             bytes = 2**log_bytes;
           end else begin
             // Total data transferred in burst can be 1, 2, 4, or 8 B.
@@ -976,7 +987,8 @@ package axi_test;
               bytes = AXI_STRB_WIDTH;
             end else begin
               automatic int unsigned log_bytes;
-              rand_success = std::randomize(log_bytes); assert(rand_success);
+              log_bytes = 5;
+              // rand_success = std::randomize(log_bytes); assert(rand_success);
               log_bytes = log_bytes % (4 - $clog2(AXI_STRB_WIDTH)) - $clog2(AXI_STRB_WIDTH);
               bytes = 2**log_bytes;
             end
@@ -1016,17 +1028,19 @@ package axi_test;
         // In an exclusive burst, the number of bytes to be transferred must be a power of 2, i.e.,
         // 1, 2, 4, 8, 16, 32, 64, or 128 bytes, and the burst length must not exceed 16 transfers.
         static int unsigned ul = (AXI_STRB_WIDTH < 8) ? 4 + $clog2(AXI_STRB_WIDTH) : 7;
-        rand_success = std::randomize(n_bytes) with {
-          n_bytes >= 1;
-          n_bytes <= ul;
-        }; assert(rand_success);
+        n_bytes = $urandom_range(1,ul);
+        // rand_success = std::randomize(n_bytes) with {
+        //   n_bytes >= 1;
+        //   n_bytes <= ul;
+        // }; assert(rand_success);
         n_bytes = 2**n_bytes;
-        rand_success = std::randomize(size) with {
-          size >= 0;
-          2**size <= n_bytes;
-          2**size <= AXI_STRB_WIDTH;
-          n_bytes / 2**size <= 16;
-        }; assert(rand_success);
+        size  = 1;
+        // rand_success = std::randomize(size) with {
+        //   size >= 0;
+        //   2**size <= n_bytes;
+        //   2**size <= AXI_STRB_WIDTH;
+        //   n_bytes / 2**size <= 16;
+        // }; assert(rand_success);
         ar_beat.ax_size = size;
         ar_beat.ax_len = n_bytes / 2**size;
         // The address must be aligned to the total number of bytes in the burst.
@@ -1039,11 +1053,12 @@ package axi_test;
     // reference?
     task automatic rand_wait(input int unsigned min, max);
       int unsigned rand_success, cycles;
-      rand_success = std::randomize(cycles) with {
-        cycles >= min;
-        cycles <= max;
-      };
-      assert (rand_success) else $error("Failed to randomize wait cycles!");
+      cycles  = $urandom_range(min,max);
+      // rand_success = std::randomize(cycles) with {
+      //   cycles >= min;
+      //   cycles <= max;
+      // };
+      //assert (rand_success) else $error("Failed to randomize wait cycles!");
       repeat (cycles) @(posedge this.drv.axi.clk_i);
     endtask
 
@@ -1087,7 +1102,8 @@ package axi_test;
           cnt_sem.put();
           rand_wait(1, 1);
           if (!beat.ax_lock) begin // The ID of an exclusive transfer must not be changed.
-            rand_success = std::randomize(id); assert(rand_success);
+            //rand_success = std::randomize(id); assert(rand_success);
+            id  = 1;
             beat.ax_id = id;
           end
         end
@@ -1196,7 +1212,7 @@ package axi_test;
           automatic logic [AXI_STRB_WIDTH-1:0] rand_strb, strb_mask;
           addr = axi_pkg::beat_addr(aw_beat.ax_addr, aw_beat.ax_size, aw_beat.ax_len,
                                     aw_beat.ax_burst, i);
-          rand_success = w_beat.randomize(); assert (rand_success);
+          //rand_success = w_beat.randomize(); assert (rand_success);
           // Determine strobe.
           w_beat.w_strb = '0;
           n_bytes = 2**aw_beat.ax_size;
@@ -1205,7 +1221,8 @@ package axi_test;
           strb_mask = '0;
           for (int unsigned b = begin_byte; b < end_byte; b++)
             strb_mask[b] = 1'b1;
-          rand_success = std::randomize(rand_strb); assert (rand_success);
+          rand_strb = $urandom();
+          //rand_success = std::randomize(rand_strb); assert (rand_success);
           w_beat.w_strb |= (rand_strb & strb_mask);
           // Determine last.
           w_beat.w_last = (i == aw_beat.ax_len);
@@ -1320,11 +1337,12 @@ package axi_test;
     // `this.drv.axi.clk_i` as `clk` argument.  What is the syntax getting an assignable reference?
     task automatic rand_wait(input int unsigned min, max);
       int unsigned rand_success, cycles;
-      rand_success = std::randomize(cycles) with {
-        cycles >= min;
-        cycles <= max;
-      };
-      assert (rand_success) else $error("Failed to randomize wait cycles!");
+      cycles = $urandom_range(min,max);
+      // rand_success = std::randomize(cycles) with {
+      //   cycles >= min;
+      //   cycles <= max;
+      // };
+      // assert (rand_success) else $error("Failed to randomize wait cycles!");
       repeat (cycles) @(posedge this.drv.axi.clk_i);
     endtask
 
@@ -1350,8 +1368,8 @@ package axi_test;
         wait (ar_queue.size > 0);
         ar_beat      = ar_queue.peek();
         byte_addr    = axi_pkg::aligned_addr(ar_beat.ax_addr, axi_pkg::size_t'($clog2(DW/8)));
-        rand_success = std::randomize(r_beat); assert(rand_success);
-        rand_success = r_beat.randomize(); assert(rand_success);
+        //rand_success = std::randomize(r_beat); assert(rand_success);
+        //rand_success = r_beat.randomize(); assert(rand_success);
         if (MAPPED) begin
           // Either use the actual data, or save the random generated.
           for (int unsigned i = 0; i < (DW/8); i++) begin
@@ -1445,7 +1463,7 @@ package axi_test;
         automatic logic rand_success;
         wait (b_wait_cnt > 0 && (aw_queue.size() != 0));
         aw_beat = aw_queue.pop_front();
-        rand_success = b_beat.randomize(); assert(rand_success);
+        //rand_success = b_beat.randomize(); assert(rand_success);
         b_beat.b_id = aw_beat.ax_id;
         if (RAND_RESP && !aw_beat.ax_atop[axi_pkg::ATOP_R_RESP])
           b_beat.b_resp[1] = $random();
@@ -1528,11 +1546,12 @@ package axi_test;
 
     task automatic rand_wait(input int unsigned min, max);
       int unsigned rand_success, cycles;
-      rand_success = std::randomize(cycles) with {
-        cycles >= min;
-        cycles <= max;
-      };
-      assert (rand_success) else $error("Failed to randomize wait cycles!");
+      cycles = $urandom_range(min,max);
+      // rand_success = std::randomize(cycles) with {
+      //   cycles >= min;
+      //   cycles <= max;
+      // };
+      // assert (rand_success) else $error("Failed to randomize wait cycles!");
       repeat (cycles) @(posedge this.drv.axi.clk_i);
     endtask
 
@@ -1585,8 +1604,10 @@ package axi_test;
         wait (aw_queue.size() > 0);
         rand_wait(RESP_MIN_WAIT_CYCLES, RESP_MAX_WAIT_CYCLES);
         aw_addr = aw_queue.pop_front();
-        rand_success = std::randomize(w_data); assert(rand_success);
-        rand_success = std::randomize(w_strb); assert(rand_success);
+        w_data  = $urandom();
+        w_strb  = 3;
+        //rand_success = std::randomize(w_data); assert(rand_success);
+        //rand_success = std::randomize(w_strb); assert(rand_success);
         $display("%0t %s> Send  W with DATA: %h STRB: %h", $time(), this.name, w_data, w_strb);
         this.drv.send_w(w_data, w_strb);
         w_queue.push_back(1'b1);
@@ -1691,11 +1712,12 @@ package axi_test;
 
     task automatic rand_wait(input int unsigned min, max);
       int unsigned rand_success, cycles;
-      rand_success = std::randomize(cycles) with {
-        cycles >= min;
-        cycles <= max;
-      };
-      assert (rand_success) else $error("Failed to randomize wait cycles!");
+      cycles = $urandom_range(min,max);
+      // rand_success = std::randomize(cycles) with {
+      //   cycles >= min;
+      //   cycles <= max;
+      // };
+      // assert (rand_success) else $error("Failed to randomize wait cycles!");
       repeat (cycles) @(posedge this.drv.axi.clk_i);
     endtask
 
@@ -1717,7 +1739,8 @@ package axi_test;
         automatic data_t r_data;
         wait (ar_queue.size() > 0);
         ar_addr = this.ar_queue.pop_front();
-        rand_success = std::randomize(r_data); assert(rand_success);
+        r_data  = {0,$urandom};
+        //rand_success = std::randomize(r_data); assert(rand_success);
         rand_wait(R_MIN_WAIT_CYCLES, R_MAX_WAIT_CYCLES);
         $display("%0t %s> Send  R with DATA: %h", $time(), this.name, r_data);
         this.drv.send_r(r_data, axi_pkg::RESP_OKAY);
@@ -1756,7 +1779,8 @@ package axi_test;
         go_aw = this.aw_queue.pop_front();
         go_b  = this.b_queue.pop_front();
         rand_wait(RESP_MIN_WAIT_CYCLES, RESP_MAX_WAIT_CYCLES);
-        rand_success = std::randomize(b_resp); assert(rand_success);
+        b_resp  = 2;
+        //rand_success = std::randomize(b_resp); assert(rand_success);
         $display("%0t %s> Send  B with RESP: %h", $time(), this.name, b_resp);
         this.drv.send_b(b_resp);
       end
