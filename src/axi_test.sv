@@ -936,8 +936,8 @@ package axi_test;
       end
 
       ax_beat.ax_addr = addr;
-      id  = 0;
-      qos = 0;
+      id  = $urandom();
+      qos = $urandom();
       // rand_success = std::randomize(id); assert(rand_success);
       // rand_success = std::randomize(qos); assert(rand_success);
       // The random ID *must* be legalized with `legalize_id()` before the beat is sent!  This is
@@ -1739,7 +1739,7 @@ package axi_test;
         automatic data_t r_data;
         wait (ar_queue.size() > 0);
         ar_addr = this.ar_queue.pop_front();
-        r_data  = {0,$urandom};
+        r_data  = $urandom;
         //rand_success = std::randomize(r_data); assert(rand_success);
         rand_wait(R_MIN_WAIT_CYCLES, R_MAX_WAIT_CYCLES);
         $display("%0t %s> Send  R with DATA: %h", $time(), this.name, r_data);

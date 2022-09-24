@@ -64,7 +64,7 @@ sources:
   - src/axi_iw_converter.sv
   - src/axi_lite_xbar.sv
   - src/axi_xbar.sv
-  - src/axi_s_xbar.sv
+  - src/axi_ace_xbar.sv
 
   - target: synth_test
     files:
@@ -101,3 +101,4 @@ sources:
       - test/tb_axi_to_axi_lite.sv
       - test/tb_axi_to_mem_banked.sv
       - test/tb_axi_xbar.sv
+      - test/tb_axi_ace_xbar.sv

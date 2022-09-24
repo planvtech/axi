@@ -211,14 +211,14 @@
 // AXI4+ATOP Channel and Request/Response Structs (with snoop support)
 //
 // Usage Example:
-// `AXI_TYPEDEF_S_AW_CHAN_T(axi_s_aw_t, axi_addr_t, axi_id_t, axi_user_t)
+// `AXI_TYPEDEF_ACE_AW_CHAN_T(axi_aw_t, axi_addr_t, axi_id_t, axi_user_t)
 // `AXI_TYPEDEF_W_CHAN_T(axi_w_t, axi_data_t, axi_strb_t, axi_user_t)
 // `AXI_TYPEDEF_B_CHAN_T(axi_b_t, axi_id_t, axi_user_t)
-// `AXI_TYPEDEF_S_AR_CHAN_T(axi_s_ar_t, axi_addr_t, axi_id_t, axi_user_t)
-// `AXI_TYPEDEF_S_R_CHAN_T(axi_s_r_t, axi_data_t, axi_id_t, axi_user_t)
-// `AXI_TYPEDEF_S_REQ_T(axi_s_req_t, axi_s_aw_t, axi_w_t, axi_s_ar_t)
-// `AXI_TYPEDEF_S_RESP_T(axi_s_resp_t, axi_b_t, axi_s_r_t)
-`define AXI_TYPEDEF_S_AW_CHAN_T(s_aw_chan_t, addr_t, id_t, user_t)  \
+// `AXI_TYPEDEF_ACE_AR_CHAN_T(axi_ar_t, axi_addr_t, axi_id_t, axi_user_t)
+// `AXI_TYPEDEF_ACE_R_CHAN_T(axi_r_t, axi_data_t, axi_id_t, axi_user_t)
+// `AXI_TYPEDEF_ACE_REQ_T(axi_req_t, axi_aw_t, axi_w_t, axi_ar_t)
+// `AXI_TYPEDEF_ACE_RESP_T(axi_resp_t, axi_b_t, axi_r_t)
+`define AXI_ACE_TYPEDEF_AW_CHAN_T(aw_chan_t, addr_t, id_t, user_t)  \
   typedef struct packed {                                       \
     id_t                id;                                       \
     addr_t              addr;                                     \
@@ -236,8 +236,8 @@
     axi_pkg::bar_t      bar;                                      \
     axi_pkg::domain_t   domain;                                   \
     axi_pkg::awunique_t awunique;                                 \
-  } s_aw_chan_t;
-`define AXI_TYPEDEF_S_AR_CHAN_T(s_ar_chan_t, addr_t, id_t, user_t)  \
+  } aw_chan_t;
+`define AXI_ACE_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t)  \
   typedef struct packed {                                         \
     id_t                id;                                       \
     addr_t              addr;                                     \
@@ -253,27 +253,27 @@
     axi_pkg::arsnoop_t  arsnoop;                                  \
     axi_pkg::bar_t      bar;                                      \
     axi_pkg::domain_t   domain;                                   \
-  } s_ar_chan_t;
-`define AXI_TYPEDEF_S_R_CHAN_T(s_r_chan_t, data_t, id_t, user_t)  \
+  } ar_chan_t;
+`define AXI_ACE_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t)  \
   typedef struct packed {                                        \
     id_t              id;                                       \
     data_t            data;                                     \
     axi_pkg::rresp_t  resp;                                    \
     logic             last;                                     \
     user_t            user;                                     \
-  } s_r_chan_t;
-`define AXI_TYPEDEF_S_REQ_T(s_req_t, s_aw_chan_t, w_chan_t, s_ar_chan_t)  \
+  } r_chan_t;
+`define AXI_ACE_TYPEDEF_REQ_T(req_t, aw_chan_t, w_chan_t, ar_chan_t)  \
   typedef struct packed {                                         \
-    s_aw_chan_t aw;                                             \
+    aw_chan_t aw;                                             \
     logic     aw_valid;                                           \
     w_chan_t  w;                                                  \
     logic     w_valid;                                            \
     logic     b_ready;                                            \
-    s_ar_chan_t ar;                                             \
+    ar_chan_t ar;                                             \
     logic     ar_valid;                                           \
     logic     r_ready;                                            \
-  } s_req_t;
-`define AXI_TYPEDEF_S_RESP_T(s_resp_t, b_chan_t, s_r_chan_t)  \
+  } req_t;
+`define AXI_ACE_TYPEDEF_RESP_T(resp_t, b_chan_t, r_chan_t)  \
   typedef struct packed {                               \
     logic     aw_ready;                                 \
     logic     ar_ready;                                 \
@@ -281,8 +281,8 @@
     logic     b_valid;                                  \
     b_chan_t  b;                                        \
     logic     r_valid;                                  \
-    s_r_chan_t  r;                                        \
-  } s_resp_t;
+    r_chan_t  r;                                        \
+  } resp_t;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -296,14 +296,14 @@
 //
 // This defines `axi_req_t` and `axi_resp_t` request/response structs as well as `axi_aw_chan_t`,
 // `axi_w_chan_t`, `axi_b_chan_t`, `axi_ar_chan_t`, and `axi_r_chan_t` channel structs.
-`define AXI_S_TYPEDEF_ALL(__name, __addr_t, __id_t, __data_t, __strb_t, __user_t)                 \
-  `AXI_TYPEDEF_S_AW_CHAN_T(__name``_s_aw_chan_t, __addr_t, __id_t, __user_t)                    \
+`define AXI_ACE_TYPEDEF_ALL(__name, __addr_t, __id_t, __data_t, __strb_t, __user_t)                 \
+  `AXI_ACE_TYPEDEF_AW_CHAN_T(__name``_aw_chan_t, __addr_t, __id_t, __user_t)                    \
   `AXI_TYPEDEF_W_CHAN_T(__name``_w_chan_t, __data_t, __strb_t, __user_t)                        \
   `AXI_TYPEDEF_B_CHAN_T(__name``_b_chan_t, __id_t, __user_t)                                    \
-  `AXI_TYPEDEF_S_AR_CHAN_T(__name``_s_ar_chan_t, __addr_t, __id_t, __user_t)                    \
-  `AXI_TYPEDEF_S_R_CHAN_T(__name``_s_r_chan_t, __data_t, __id_t, __user_t)                      \
-  `AXI_TYPEDEF_S_REQ_T(__name``_s_req_t, __name``_s_aw_chan_t, __name``_w_chan_t, __name``_s_ar_chan_t) \
-  `AXI_TYPEDEF_S_RESP_T(__name``_s_resp_t, __name``_b_chan_t, __name``_s_r_chan_t)
+  `AXI_ACE_TYPEDEF_AR_CHAN_T(__name``_ar_chan_t, __addr_t, __id_t, __user_t)                    \
+  `AXI_ACE_TYPEDEF_R_CHAN_T(__name``_r_chan_t, __data_t, __id_t, __user_t)                      \
+  `AXI_ACE_TYPEDEF_REQ_T(__name``_req_t, __name``_aw_chan_t, __name``_w_chan_t, __name``_ar_chan_t) \
+  `AXI_ACE_TYPEDEF_RESP_T(__name``_resp_t, __name``_b_chan_t, __name``_r_chan_t)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 `endif
