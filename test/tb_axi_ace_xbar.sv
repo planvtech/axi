@@ -95,7 +95,7 @@ module tb_axi_ace_xbar #(
     '{idx: 32'd0 % TbNumSlv, start_addr: 32'h0000_0000, end_addr: 32'h0000_3000}
   };
 
-  typedef axi_test::axi_rand_master #(
+  typedef axi_test::axi_ace_rand_master #(
     // AXI interface parameters
     .AW ( AxiAddrWidth       ),
     .DW ( AxiDataWidth       ),
@@ -111,7 +111,7 @@ module tb_axi_ace_xbar #(
     .AXI_ATOPS      ( TbEnAtop ),
     .UNIQUE_IDS     ( TbUniqueIds )
   ) axi_rand_master_t;
-  typedef axi_test::axi_rand_slave #(
+  typedef axi_test::axi_ace_rand_slave #(
     // AXI interface parameters
     .AW ( AxiAddrWidth     ),
     .DW ( AxiDataWidth     ),
@@ -141,19 +141,19 @@ module tb_axi_ace_xbar #(
   // -------------------------------
   // AXI Interfaces
   // -------------------------------
-  AXI_BUS #(
+  AXI_ACE_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
     .AXI_DATA_WIDTH ( AxiDataWidth      ),
     .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
     .AXI_USER_WIDTH ( AxiUserWidth      )
   ) master [TbNumMst-1:0] ();
-  AXI_BUS_DV #(
+  AXI_ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
     .AXI_DATA_WIDTH ( AxiDataWidth      ),
     .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
     .AXI_USER_WIDTH ( AxiUserWidth      )
   ) master_dv [TbNumMst-1:0] (clk);
-  AXI_BUS_DV #(
+  AXI_ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
     .AXI_DATA_WIDTH ( AxiDataWidth      ),
     .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
@@ -165,19 +165,19 @@ module tb_axi_ace_xbar #(
     `AXI_ACE_ASSIGN_TO_RESP(masters_resp[i], master[i])
   end
 
-  AXI_BUS #(
+  AXI_ACE_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
   ) slave [TbNumSlv-1:0] ();
-  AXI_BUS_DV #(
+  AXI_ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
   ) slave_dv [TbNumSlv-1:0](clk);
-  AXI_BUS_DV #(
+  AXI_ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
@@ -218,7 +218,7 @@ module tb_axi_ace_xbar #(
   end
 
   initial begin : proc_monitor
-    static tb_axi_xbar_pkg::axi_xbar_monitor #(
+    static tb_axi_ace_xbar_pkg::axi_ace_xbar_monitor #(
       .AxiAddrWidth      ( AxiAddrWidth         ),
       .AxiDataWidth      ( AxiDataWidth         ),
       .AxiIdWidthMasters ( AxiIdWidthMasters    ),

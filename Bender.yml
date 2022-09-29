@@ -80,6 +80,7 @@ sources:
       # Level 0
       - test/tb_axi_dw_pkg.sv
       - test/tb_axi_xbar_pkg.sv
+      - test/tb_axi_ace_xbar_pkg.sv
       # Level 1
       - test/tb_axi_addr_test.sv
       - test/tb_axi_atop_filter.sv

@@ -18,7 +18,7 @@
 
 
 /// A set of testbench utilities for AXI interfaces.
-package axi_test;
+package axi_ace_test;
 
   import axi_pkg::*;
 
@@ -242,32 +242,6 @@ package axi_test;
     logic [3:0]         ax_region = '0;
     logic [5:0]         ax_atop   = '0; // Only defined on the AW channel.
     rand logic [UW-1:0] ax_user   = '0;
-
-  endclass
-
-  /// The data transferred on a beat on the AW/AR channels.
-  class axi_ace_ax_beat #(
-    parameter AW = 32,
-    parameter IW = 8 ,
-    parameter UW = 1
-  );
-    rand logic [IW-1:0] ax_id       = '0;
-    rand logic [AW-1:0] ax_addr     = '0;
-    logic [7:0]         ax_len      = '0;
-    logic [2:0]         ax_size     = '0;
-    logic [1:0]         ax_burst    = '0;
-    logic               ax_lock     = '0;
-    logic [3:0]         ax_cache    = '0;
-    logic [2:0]         ax_prot     = '0;
-    rand logic [3:0]    ax_qos      = '0;
-    logic [3:0]         ax_region   = '0;
-    logic [5:0]         ax_atop     = '0; // Only defined on the AW channel.
-    rand logic [UW-1:0] ax_user     = '0;
-    rand logic [2:0]    ax_awsnoop  = '0;
-    rand logic [1:0]    ax_bar      = '0;
-    rand logic [1:0]    ax_domain   = '0;
-    rand logic          ax_awunique = '0;
-    rand logic [3:0]    ax_arsnoop  = '0;
   endclass
 
   /// The data transferred on a beat on the W channel.
@@ -300,19 +274,6 @@ package axi_test;
     rand logic [IW-1:0] r_id   = '0;
     rand logic [DW-1:0] r_data = '0;
     axi_pkg::resp_t     r_resp = '0;
-    logic               r_last = '0;
-    rand logic [UW-1:0] r_user = '0;
-  endclass
-
- /// The data transferred on a beat on the R channel.
-  class axi_ace_r_beat #(
-    parameter DW = 32,
-    parameter IW = 8 ,
-    parameter UW = 1
-  );
-    rand logic [IW-1:0] r_id   = '0;
-    rand logic [DW-1:0] r_data = '0;
-    axi_pkg::rresp_t    r_resp = '0;
     logic               r_last = '0;
     rand logic [UW-1:0] r_user = '0;
   endclass
@@ -1530,8 +1491,7 @@ package axi_test;
 
   endclass
 
-
-  /// A driver for AXI4 interface.
+  /// A driver for AXI4_ACE interface.
   class axi_ace_driver #(
     parameter int  AW = 32  ,
     parameter int  DW = 32  ,
@@ -1547,10 +1507,10 @@ package axi_test;
       .AXI_USER_WIDTH(UW)
     ) axi;
 
-    typedef axi_ace_ax_beat #(.AW(AW), .IW(IW), .UW(UW)) ax_ace_beat_t;
+    typedef axi_ax_beat #(.AW(AW), .IW(IW), .UW(UW)) ax_beat_t;
     typedef axi_w_beat  #(.DW(DW), .UW(UW))          w_beat_t;
     typedef axi_b_beat  #(.IW(IW), .UW(UW))          b_beat_t;
-    typedef axi_ace_r_beat  #(.DW(DW), .IW(IW), .UW(UW)) r_ace_beat_t;
+    typedef axi_r_beat  #(.DW(DW), .IW(IW), .UW(UW)) r_beat_t;
 
     function new(
       virtual AXI_ACE_BUS_DV #(
@@ -1564,45 +1524,38 @@ package axi_test;
     endfunction
 
     function void reset_master();
-      axi.aw_id       <= '0;
-      axi.aw_addr     <= '0;
-      axi.aw_len      <= '0;
-      axi.aw_size     <= '0;
-      axi.aw_burst    <= '0;
-      axi.aw_lock     <= '0;
-      axi.aw_cache    <= '0;
-      axi.aw_prot     <= '0;
-      axi.aw_qos      <= '0;
-      axi.aw_region   <= '0;
-      axi.aw_atop     <= '0;
-      axi.aw_user     <= '0;
-      axi.aw_valid    <= '0;
-      axi.aw_awsnoop  <= '0;
-      axi.aw_bar      <= '0;
-      axi.aw_domain   <= '0;
-      axi.aw_awunique <= '0;
-      axi.w_data      <= '0;
-      axi.w_strb      <= '0;
-      axi.w_last      <= '0;
-      axi.w_user      <= '0;
-      axi.w_valid     <= '0;
-      axi.b_ready     <= '0;
-      axi.ar_id       <= '0;
-      axi.ar_addr     <= '0;
-      axi.ar_len      <= '0;
-      axi.ar_size     <= '0;
-      axi.ar_burst    <= '0;
-      axi.ar_lock     <= '0;
-      axi.ar_cache    <= '0;
-      axi.ar_prot     <= '0;
-      axi.ar_qos      <= '0;
-      axi.ar_region   <= '0;
-      axi.ar_user     <= '0;
-      axi.ar_arsnoop  <= '0;
-      axi.ar_bar      <= '0;
-      axi.ar_domain   <= '0;
-      axi.ar_valid    <= '0;
-      axi.r_ready     <= '0;
+      axi.aw_id     <= '0;
+      axi.aw_addr   <= '0;
+      axi.aw_len    <= '0;
+      axi.aw_size   <= '0;
+      axi.aw_burst  <= '0;
+      axi.aw_lock   <= '0;
+      axi.aw_cache  <= '0;
+      axi.aw_prot   <= '0;
+      axi.aw_qos    <= '0;
+      axi.aw_region <= '0;
+      axi.aw_atop   <= '0;
+      axi.aw_user   <= '0;
+      axi.aw_valid  <= '0;
+      axi.w_data    <= '0;
+      axi.w_strb    <= '0;
+      axi.w_last    <= '0;
+      axi.w_user    <= '0;
+      axi.w_valid   <= '0;
+      axi.b_ready   <= '0;
+      axi.ar_id     <= '0;
+      axi.ar_addr   <= '0;
+      axi.ar_len    <= '0;
+      axi.ar_size   <= '0;
+      axi.ar_burst  <= '0;
+      axi.ar_lock   <= '0;
+      axi.ar_cache  <= '0;
+      axi.ar_prot   <= '0;
+      axi.ar_qos    <= '0;
+      axi.ar_region <= '0;
+      axi.ar_user   <= '0;
+      axi.ar_valid  <= '0;
+      axi.r_ready   <= '0;
     endfunction
 
     function void reset_slave();
@@ -1631,45 +1584,37 @@ package axi_test;
 
     /// Issue a beat on the AW channel.
     task send_aw (
-      input ax_ace_beat_t beat
+      input ax_beat_t beat
     );
-      axi.aw_id       <= #TA beat.ax_id;
-      axi.aw_addr     <= #TA beat.ax_addr;
-      axi.aw_len      <= #TA beat.ax_len;
-      axi.aw_size     <= #TA beat.ax_size;
-      axi.aw_burst    <= #TA beat.ax_burst;
-      axi.aw_lock     <= #TA beat.ax_lock;
-      axi.aw_cache    <= #TA beat.ax_cache;
-      axi.aw_prot     <= #TA beat.ax_prot;
-      axi.aw_qos      <= #TA beat.ax_qos;
-      axi.aw_region   <= #TA beat.ax_region;
-      axi.aw_atop     <= #TA beat.ax_atop;
-      axi.aw_user     <= #TA beat.ax_user;
-      axi.aw_valid    <= #TA 1;
-      axi.aw_awsnoop  <= #TA beat.ax_awsnoop;
-      axi.aw_bar      <= #TA beat.ax_bar;
-      axi.aw_domain   <= #TA beat.ax_domain;
-      axi.aw_awunique <= #TA beat.ax_awunique;
+      axi.aw_id     <= #TA beat.ax_id;
+      axi.aw_addr   <= #TA beat.ax_addr;
+      axi.aw_len    <= #TA beat.ax_len;
+      axi.aw_size   <= #TA beat.ax_size;
+      axi.aw_burst  <= #TA beat.ax_burst;
+      axi.aw_lock   <= #TA beat.ax_lock;
+      axi.aw_cache  <= #TA beat.ax_cache;
+      axi.aw_prot   <= #TA beat.ax_prot;
+      axi.aw_qos    <= #TA beat.ax_qos;
+      axi.aw_region <= #TA beat.ax_region;
+      axi.aw_atop   <= #TA beat.ax_atop;
+      axi.aw_user   <= #TA beat.ax_user;
+      axi.aw_valid  <= #TA 1;
       cycle_start();
       while (axi.aw_ready != 1) begin cycle_end(); cycle_start(); end
       cycle_end();
-      axi.aw_id       <= #TA '0;
-      axi.aw_addr     <= #TA '0;
-      axi.aw_len      <= #TA '0;
-      axi.aw_size     <= #TA '0;
-      axi.aw_burst    <= #TA '0;
-      axi.aw_lock     <= #TA '0;
-      axi.aw_cache    <= #TA '0;
-      axi.aw_prot     <= #TA '0;
-      axi.aw_qos      <= #TA '0;
-      axi.aw_region   <= #TA '0;
-      axi.aw_atop     <= #TA '0;
-      axi.aw_user     <= #TA '0;
-      axi.aw_valid    <= #TA  0;
-      axi.aw_awsnoop  <= #TA '0;
-      axi.aw_bar      <= #TA '0;
-      axi.aw_domain   <= #TA '0;
-      axi.aw_awunique <= #TA  0;
+      axi.aw_id     <= #TA '0;
+      axi.aw_addr   <= #TA '0;
+      axi.aw_len    <= #TA '0;
+      axi.aw_size   <= #TA '0;
+      axi.aw_burst  <= #TA '0;
+      axi.aw_lock   <= #TA '0;
+      axi.aw_cache  <= #TA '0;
+      axi.aw_prot   <= #TA '0;
+      axi.aw_qos    <= #TA '0;
+      axi.aw_region <= #TA '0;
+      axi.aw_atop   <= #TA '0;
+      axi.aw_user   <= #TA '0;
+      axi.aw_valid  <= #TA 0;
     endtask
 
     /// Issue a beat on the W channel.
@@ -1710,46 +1655,40 @@ package axi_test;
 
     /// Issue a beat on the AR channel.
     task send_ar (
-      input ax_ace_beat_t beat
+      input ax_beat_t beat
     );
-      axi.ar_id       <= #TA beat.ax_id;
-      axi.ar_addr     <= #TA beat.ax_addr;
-      axi.ar_len      <= #TA beat.ax_len;
-      axi.ar_size     <= #TA beat.ax_size;
-      axi.ar_burst    <= #TA beat.ax_burst;
-      axi.ar_lock     <= #TA beat.ax_lock;
-      axi.ar_cache    <= #TA beat.ax_cache;
-      axi.ar_prot     <= #TA beat.ax_prot;
-      axi.ar_qos      <= #TA beat.ax_qos;
-      axi.ar_region   <= #TA beat.ax_region;
-      axi.ar_user     <= #TA beat.ax_user;
-      axi.ar_valid    <= #TA 1;
-      axi.ar_arsnoop  <= #TA beat.ax_arsnoop;
-      axi.ar_bar      <= #TA beat.ax_bar;
-      axi.ar_domain   <= #TA beat.ax_domain;
+      axi.ar_id     <= #TA beat.ax_id;
+      axi.ar_addr   <= #TA beat.ax_addr;
+      axi.ar_len    <= #TA beat.ax_len;
+      axi.ar_size   <= #TA beat.ax_size;
+      axi.ar_burst  <= #TA beat.ax_burst;
+      axi.ar_lock   <= #TA beat.ax_lock;
+      axi.ar_cache  <= #TA beat.ax_cache;
+      axi.ar_prot   <= #TA beat.ax_prot;
+      axi.ar_qos    <= #TA beat.ax_qos;
+      axi.ar_region <= #TA beat.ax_region;
+      axi.ar_user   <= #TA beat.ax_user;
+      axi.ar_valid  <= #TA 1;
       cycle_start();
       while (axi.ar_ready != 1) begin cycle_end(); cycle_start(); end
       cycle_end();
-      axi.ar_id       <= #TA '0;
-      axi.ar_addr     <= #TA '0;
-      axi.ar_len      <= #TA '0;
-      axi.ar_size     <= #TA '0;
-      axi.ar_burst    <= #TA '0;
-      axi.ar_lock     <= #TA '0;
-      axi.ar_cache    <= #TA '0;
-      axi.ar_prot     <= #TA '0;
-      axi.ar_qos      <= #TA '0;
-      axi.ar_region   <= #TA '0;
-      axi.ar_user     <= #TA '0;
-      axi.ar_valid    <= #TA 0;
-      axi.ar_arsnoop  <= #TA '0;
-      axi.ar_bar      <= #TA '0;
-      axi.ar_domain   <= #TA '0;     
+      axi.ar_id     <= #TA '0;
+      axi.ar_addr   <= #TA '0;
+      axi.ar_len    <= #TA '0;
+      axi.ar_size   <= #TA '0;
+      axi.ar_burst  <= #TA '0;
+      axi.ar_lock   <= #TA '0;
+      axi.ar_cache  <= #TA '0;
+      axi.ar_prot   <= #TA '0;
+      axi.ar_qos    <= #TA '0;
+      axi.ar_region <= #TA '0;
+      axi.ar_user   <= #TA '0;
+      axi.ar_valid  <= #TA 0;
     endtask
 
     /// Issue a beat on the R channel.
     task send_r (
-      input r_ace_beat_t beat
+      input r_beat_t beat
     );
       axi.r_id    <= #TA beat.r_id;
       axi.r_data  <= #TA beat.r_data;
@@ -1770,29 +1709,25 @@ package axi_test;
 
     /// Wait for a beat on the AW channel.
     task recv_aw (
-      output ax_ace_beat_t beat
+      output ax_beat_t beat
     );
       axi.aw_ready <= #TA 1;
       cycle_start();
       while (axi.aw_valid != 1) begin cycle_end(); cycle_start(); end
       beat = new;
-      beat.ax_id        = axi.aw_id;
-      beat.ax_addr      = axi.aw_addr;
-      beat.ax_len       = axi.aw_len;
-      beat.ax_size      = axi.aw_size;
-      beat.ax_burst     = axi.aw_burst;
-      beat.ax_lock      = axi.aw_lock;
-      beat.ax_cache     = axi.aw_cache;
-      beat.ax_prot      = axi.aw_prot;
-      beat.ax_qos       = axi.aw_qos;
-      beat.ax_region    = axi.aw_region;
-      beat.ax_atop      = axi.aw_atop;
-      beat.ax_user      = axi.aw_user;
-      beat.ax_awsnoop   = axi.aw_awsnoop;
-      beat.ax_bar       = axi.aw_bar;
-      beat.ax_domain    = axi.aw_domain;
-      beat.ax_awunique  = axi.aw_awunique;
-      cycle_end();  
+      beat.ax_id     = axi.aw_id;
+      beat.ax_addr   = axi.aw_addr;
+      beat.ax_len    = axi.aw_len;
+      beat.ax_size   = axi.aw_size;
+      beat.ax_burst  = axi.aw_burst;
+      beat.ax_lock   = axi.aw_lock;
+      beat.ax_cache  = axi.aw_cache;
+      beat.ax_prot   = axi.aw_prot;
+      beat.ax_qos    = axi.aw_qos;
+      beat.ax_region = axi.aw_region;
+      beat.ax_atop   = axi.aw_atop;
+      beat.ax_user   = axi.aw_user;
+      cycle_end();
       axi.aw_ready <= #TA 0;
     endtask
 
@@ -1829,34 +1764,31 @@ package axi_test;
 
     /// Wait for a beat on the AR channel.
     task recv_ar (
-      output ax_ace_beat_t beat
+      output ax_beat_t beat
     );
       axi.ar_ready  <= #TA 1;
       cycle_start();
       while (axi.ar_valid != 1) begin cycle_end(); cycle_start(); end
       beat = new;
-      beat.ax_id      = axi.ar_id;
-      beat.ax_addr    = axi.ar_addr;
-      beat.ax_len     = axi.ar_len;
-      beat.ax_size    = axi.ar_size;
-      beat.ax_burst   = axi.ar_burst;
-      beat.ax_lock    = axi.ar_lock;
-      beat.ax_cache   = axi.ar_cache;
-      beat.ax_prot    = axi.ar_prot;
-      beat.ax_qos     = axi.ar_qos;
-      beat.ax_region  = axi.ar_region;
-      beat.ax_atop    = 'X;  // Not defined on the AR channel.
-      beat.ax_user    = axi.ar_user;
-      beat.ax_arsnoop = axi.ar_arsnoop;
-      beat.ax_bar     = axi.ar_bar;
-      beat.ax_domain  = axi.ar_domain;
+      beat.ax_id     = axi.ar_id;
+      beat.ax_addr   = axi.ar_addr;
+      beat.ax_len    = axi.ar_len;
+      beat.ax_size   = axi.ar_size;
+      beat.ax_burst  = axi.ar_burst;
+      beat.ax_lock   = axi.ar_lock;
+      beat.ax_cache  = axi.ar_cache;
+      beat.ax_prot   = axi.ar_prot;
+      beat.ax_qos    = axi.ar_qos;
+      beat.ax_region = axi.ar_region;
+      beat.ax_atop   = 'X;  // Not defined on the AR channel.
+      beat.ax_user   = axi.ar_user;
       cycle_end();
       axi.ar_ready  <= #TA 0;
     endtask
 
     /// Wait for a beat on the R channel.
     task recv_r (
-      output r_ace_beat_t beat
+      output r_beat_t beat
     );
       axi.r_ready <= #TA 1;
       cycle_start();
@@ -1873,27 +1805,23 @@ package axi_test;
 
     /// Monitor the AW channel and return the next beat.
     task mon_aw (
-      output ax_ace_beat_t beat
+      output ax_beat_t beat
     );
       cycle_start();
       while (!(axi.aw_valid && axi.aw_ready)) begin cycle_end(); cycle_start(); end
       beat = new;
-      beat.ax_id        = axi.aw_id;
-      beat.ax_addr      = axi.aw_addr;
-      beat.ax_len       = axi.aw_len;
-      beat.ax_size      = axi.aw_size;
-      beat.ax_burst     = axi.aw_burst;
-      beat.ax_lock      = axi.aw_lock;
-      beat.ax_cache     = axi.aw_cache;
-      beat.ax_prot      = axi.aw_prot;
-      beat.ax_qos       = axi.aw_qos;
-      beat.ax_region    = axi.aw_region;
-      beat.ax_atop      = axi.aw_atop;
-      beat.ax_user      = axi.aw_user;
-      beat.ax_awsnoop   = axi.aw_awsnoop;
-      beat.ax_bar       = axi.aw_bar;
-      beat.ax_domain    = axi.aw_domain;
-      beat.ax_awunique  = axi.aw_awunique;
+      beat.ax_id     = axi.aw_id;
+      beat.ax_addr   = axi.aw_addr;
+      beat.ax_len    = axi.aw_len;
+      beat.ax_size   = axi.aw_size;
+      beat.ax_burst  = axi.aw_burst;
+      beat.ax_lock   = axi.aw_lock;
+      beat.ax_cache  = axi.aw_cache;
+      beat.ax_prot   = axi.aw_prot;
+      beat.ax_qos    = axi.aw_qos;
+      beat.ax_region = axi.aw_region;
+      beat.ax_atop   = axi.aw_atop;
+      beat.ax_user   = axi.aw_user;
       cycle_end();
     endtask
 
@@ -1926,32 +1854,29 @@ package axi_test;
 
     /// Monitor the AR channel and return the next beat.
     task mon_ar (
-      output ax_ace_beat_t beat
+      output ax_beat_t beat
     );
       cycle_start();
       while (!(axi.ar_valid && axi.ar_ready)) begin cycle_end(); cycle_start(); end
       beat = new;
-      beat.ax_id      = axi.ar_id;
-      beat.ax_addr    = axi.ar_addr;
-      beat.ax_len     = axi.ar_len;
-      beat.ax_size    = axi.ar_size;
-      beat.ax_burst   = axi.ar_burst;
-      beat.ax_lock    = axi.ar_lock;
-      beat.ax_cache   = axi.ar_cache;
-      beat.ax_prot    = axi.ar_prot;
-      beat.ax_qos     = axi.ar_qos;
-      beat.ax_region  = axi.ar_region;
-      beat.ax_atop    = 'X;  // Not defined on the AR channel.
-      beat.ax_user    = axi.ar_user;
-      beat.ax_arsnoop = axi.ar_arsnoop;
-      beat.ax_bar     = axi.ar_bar;
-      beat.ax_domain  = axi.aw_awsnoop;
+      beat.ax_id     = axi.ar_id;
+      beat.ax_addr   = axi.ar_addr;
+      beat.ax_len    = axi.ar_len;
+      beat.ax_size   = axi.ar_size;
+      beat.ax_burst  = axi.ar_burst;
+      beat.ax_lock   = axi.ar_lock;
+      beat.ax_cache  = axi.ar_cache;
+      beat.ax_prot   = axi.ar_prot;
+      beat.ax_qos    = axi.ar_qos;
+      beat.ax_region = axi.ar_region;
+      beat.ax_atop   = 'X;  // Not defined on the AR channel.
+      beat.ax_user   = axi.ar_user;
       cycle_end();
     endtask
 
     /// Monitor the R channel and return the next beat.
     task mon_r (
-      output r_ace_beat_t beat
+      output r_beat_t beat
     );
       cycle_start();
       while (!(axi.r_valid && axi.r_ready)) begin cycle_end(); cycle_start(); end
@@ -2000,7 +1925,7 @@ package axi_test;
     parameter int   AXI_STRB_WIDTH = DW/8,
     parameter int   N_AXI_IDS = 2**IW
   );
-    typedef axi_test::axi_ace_driver #(
+    typedef axi_ace_test::axi_ace_driver #(
       .AW(AW), .DW(DW), .IW(IW), .UW(UW), .TA(TA), .TT(TT)
     ) axi_ace_driver_t;
     typedef logic [AW-1:0]      addr_t;
@@ -2010,19 +1935,12 @@ package axi_test;
     typedef logic [IW-1:0]      id_t;
     typedef axi_pkg::len_t      len_t;
     typedef axi_pkg::size_t     size_t;
-    typedef axi_pkg::arsnoop_t  arsnoop_t;
-    typedef axi_pkg::bar_t      bar_t;
-    typedef axi_pkg::domain_t   domain_t;
-    typedef axi_pkg::awsnoop_t  awsnoop_t;
-    typedef axi_pkg::awunique_t awunique_t;
-
-
     typedef logic [UW-1:0]      user_t;
     typedef axi_pkg::mem_type_t mem_type_t;
 
-    typedef axi_ace_driver_t::ax_ace_beat_t ax_ace_beat_t;
+    typedef axi_ace_driver_t::ax_beat_t ax_beat_t;
     typedef axi_ace_driver_t::b_beat_t  b_beat_t;
-    typedef axi_ace_driver_t::r_ace_beat_t  r_ace_beat_t;
+    typedef axi_ace_driver_t::r_beat_t  r_beat_t;
     typedef axi_ace_driver_t::w_beat_t  w_beat_t;
 
     static addr_t PFN_MASK = '{11: 1'b0, 10: 1'b0, 9: 1'b0, 8: 1'b0, 7: 1'b0, 6: 1'b0, 5: 1'b0,
@@ -2042,7 +1960,7 @@ package axi_test;
 
     semaphore cnt_sem;
 
-    ax_ace_beat_t aw_ace_queue[$],
+    ax_beat_t aw_queue[$],
               w_queue[$],
               excl_queue[$];
 
@@ -2110,9 +2028,9 @@ package axi_test;
       max_cprob = traffic_shape[$].cprob;
     endfunction : add_traffic_shaping
 
-    function ax_ace_beat_t new_rand_burst(input logic is_read);
+    function ax_beat_t new_rand_burst(input logic is_read);
       automatic logic rand_success;
-      automatic ax_ace_beat_t ax_ace_beat = new;
+      automatic ax_beat_t ax_beat = new;
       automatic addr_t addr;
       automatic burst_t burst;
       automatic cache_t cache;
@@ -2120,11 +2038,6 @@ package axi_test;
       automatic qos_t qos;
       automatic len_t len;
       automatic size_t size;
-      automatic bar_t bar;
-      automatic domain_t domain;
-      automatic awsnoop_t awsnoop;
-      automatic arsnoop_t arsnoop;
-      automatic awunique_t awunique;
       automatic int unsigned mem_region_idx;
       automatic mem_region_t mem_region;
       automatic int cprob;
@@ -2151,9 +2064,9 @@ package axi_test;
       // rand_success = std::randomize(burst) with {
       //   burst inside {this.allowed_bursts};
       // }; assert(rand_success);
-      ax_ace_beat.ax_burst = burst;
+      ax_beat.ax_burst = burst;
       // Determine memory type.
-      ax_ace_beat.ax_cache = is_read ? axi_pkg::get_arcache(mem_region.mem_type) : axi_pkg::get_awcache(mem_region.mem_type);
+      ax_beat.ax_cache = is_read ? axi_pkg::get_arcache(mem_region.mem_type) : axi_pkg::get_awcache(mem_region.mem_type);
       // Randomize beat size.
       if (TRAFFIC_SHAPING) begin
         cprob = $urandom_range(0,max_cprob-1);
@@ -2164,7 +2077,7 @@ package axi_test;
         for (int i = 0; i < traffic_shape.size(); i++)
           if (traffic_shape[i].cprob > cprob) begin
             len = traffic_shape[i].len;
-            if (ax_ace_beat.ax_burst == BURST_WRAP) begin
+            if (ax_beat.ax_burst == BURST_WRAP) begin
               assert (len inside {len_t'(1), len_t'(3), len_t'(7), len_t'(15)});
             end
             break;
@@ -2177,8 +2090,8 @@ package axi_test;
           //   2**size <= AXI_STRB_WIDTH;
           //   2**size <= len;
           // }; assert(rand_success);
-          ax_ace_beat.ax_size = size;
-          ax_ace_beat.ax_len = ((len + (1 << size) - 1) >> size) - 1;
+          ax_beat.ax_size = size;
+          ax_beat.ax_len = ((len + (1 << size) - 1) >> size) - 1;
 
           addr  = mem_region.addr_begin;
           // rand_success = std::randomize(addr) with {
@@ -2187,12 +2100,12 @@ package axi_test;
           //   addr + len <= mem_region.addr_end;
          // }; assert(rand_success);
 
-          if (ax_ace_beat.ax_burst == axi_pkg::BURST_FIXED) begin
-            if (((addr + 2**ax_ace_beat.ax_size) & PFN_MASK) == (addr & PFN_MASK)) begin
+          if (ax_beat.ax_burst == axi_pkg::BURST_FIXED) begin
+            if (((addr + 2**ax_beat.ax_size) & PFN_MASK) == (addr & PFN_MASK)) begin
               break;
             end
           end else begin // BURST_INCR
-            if (((addr + 2**ax_ace_beat.ax_size * (ax_ace_beat.ax_len + 1)) & PFN_MASK) == (addr & PFN_MASK)) begin
+            if (((addr + 2**ax_beat.ax_size * (ax_beat.ax_len + 1)) & PFN_MASK) == (addr & PFN_MASK)) begin
               break;
             end
           end
@@ -2211,8 +2124,8 @@ package axi_test;
           // rand_success = std::randomize(size) with {
           //   2**size <= AXI_STRB_WIDTH;
           // }; assert(rand_success);
-          ax_ace_beat.ax_size = size;
-          ax_ace_beat.ax_len = len;
+          ax_beat.ax_size = size;
+          ax_beat.ax_len = len;
 
           // Randomize address
           addr  = mem_region.addr_begin;
@@ -2222,44 +2135,31 @@ package axi_test;
           //   addr + ((len + 1) << size) <= mem_region.addr_end;
           // }; assert(rand_success);
 
-          if (ax_ace_beat.ax_burst == axi_pkg::BURST_FIXED) begin
-            if (((addr + 2**ax_ace_beat.ax_size) & PFN_MASK) == (addr & PFN_MASK)) begin
+          if (ax_beat.ax_burst == axi_pkg::BURST_FIXED) begin
+            if (((addr + 2**ax_beat.ax_size) & PFN_MASK) == (addr & PFN_MASK)) begin
               break;
             end
           end else begin // BURST_INCR, BURST_WRAP
-            if (((addr + 2**ax_ace_beat.ax_size * (ax_ace_beat.ax_len + 1)) & PFN_MASK) == (addr & PFN_MASK)) begin
+            if (((addr + 2**ax_beat.ax_size * (ax_beat.ax_len + 1)) & PFN_MASK) == (addr & PFN_MASK)) begin
               break;
             end
           end
         end
       end
 
-      ax_ace_beat.ax_addr = addr;
-      id      = $urandom();
-      qos     = $urandom();
-      bar     = $urandom();
-      domain  = $urandom();
-      awsnoop = $urandom();
-      arsnoop = $urandom();
-      awunique= $urandom();
-
+      ax_beat.ax_addr = addr;
+      id  = $urandom();
+      qos = $urandom();
       // rand_success = std::randomize(id); assert(rand_success);
       // rand_success = std::randomize(qos); assert(rand_success);
       // The random ID *must* be legalized with `legalize_id()` before the beat is sent!  This is
       // currently done in the functions `create_aws()` and `send_ars()`.
-      ax_ace_beat.ax_id       = id;
-      ax_ace_beat.ax_qos      = qos;
-      ax_ace_beat.ax_awsnoop  = awsnoop;
-      ax_ace_beat.ax_arsnoop  = arsnoop;
-      ax_ace_beat.ax_bar      = bar;
-      ax_ace_beat.ax_domain   = domain;
-      ax_ace_beat.ax_awunique = awunique;
-     
-
-      return ax_ace_beat;
+      ax_beat.ax_id = id;
+      ax_beat.ax_qos = qos;
+      return ax_beat;
     endfunction
 
-    task rand_atop_burst(inout ax_ace_beat_t beat);
+    task rand_atop_burst(inout ax_beat_t beat);
       automatic logic rand_success;
       beat.ax_atop[5:4] = $random();
       if (beat.ax_atop[5:4] != 2'b00 && !AXI_BURST_INCR) begin
@@ -2330,9 +2230,9 @@ package axi_test;
       end
     endtask
 
-    function void rand_excl_ar(inout ax_ace_beat_t ar_ace_beat);
-      ar_ace_beat.ax_lock = $random();
-      if (ar_ace_beat.ax_lock) begin
+    function void rand_excl_ar(inout ax_beat_t ar_beat);
+      ar_beat.ax_lock = $random();
+      if (ar_beat.ax_lock) begin
         automatic logic rand_success;
         automatic int unsigned n_bytes;
         automatic size_t size;
@@ -2353,10 +2253,10 @@ package axi_test;
         //   2**size <= AXI_STRB_WIDTH;
         //   n_bytes / 2**size <= 16;
         // }; assert(rand_success);
-        ar_ace_beat.ax_size = size;
-        ar_ace_beat.ax_len = n_bytes / 2**size;
+        ar_beat.ax_size = size;
+        ar_beat.ax_len = n_bytes / 2**size;
         // The address must be aligned to the total number of bytes in the burst.
-        ar_ace_beat.ax_addr = ar_ace_beat.ax_addr & ~(n_bytes-1);
+        ar_beat.ax_addr = ar_beat.ax_addr & ~(n_bytes-1);
       end
     endfunction
 
@@ -2376,7 +2276,7 @@ package axi_test;
 
     // Determine if the ID of an AXI Ax beat is currently legal.  This function may only be called
     // while holding the `cnt_sem` semaphore.
-    function bit id_is_legal(input bit is_read, input ax_ace_beat_t beat);
+    function bit id_is_legal(input bit is_read, input ax_beat_t beat);
       if (AXI_ATOPS) begin
         // The ID must not be the same as that of any in-flight ATOP.
         if (atop_resp_b[beat.ax_id] || atop_resp_r[beat.ax_id]) return 1'b0;
@@ -2398,7 +2298,7 @@ package axi_test;
 
     // Legalize the ID of an AXI Ax beat (drawing a new ID at random if the existing ID is currently
     // not legal) and add it to the in-flight transactions.
-    task legalize_id(input bit is_read, inout ax_ace_beat_t beat);
+    task legalize_id(input bit is_read, inout ax_beat_t beat);
       automatic logic rand_success;
       automatic id_t id = beat.ax_id;
       // Loop until a legal ID is found.
@@ -2444,17 +2344,17 @@ package axi_test;
       automatic logic rand_success;
       repeat (n_reads) begin
         automatic id_t id;
-        automatic ax_ace_beat_t ar_ace_beat = new_rand_burst(1'b1);
+        automatic ax_beat_t ar_beat = new_rand_burst(1'b1);
         while (tot_r_flight_cnt >= MAX_READ_TXNS) begin
           rand_wait(1, 1);
         end
         if (AXI_EXCLS) begin
-          rand_excl_ar(ar_ace_beat);
+          rand_excl_ar(ar_beat);
         end
-        legalize_id(1'b1, ar_ace_beat);
+        legalize_id(1'b1, ar_beat);
         rand_wait(AX_MIN_WAIT_CYCLES, AX_MAX_WAIT_CYCLES);
-        drv.send_ar(ar_ace_beat);
-        if (ar_ace_beat.ax_lock) excl_queue.push_back(ar_ace_beat);
+        drv.send_ar(ar_beat);
+        if (ar_beat.ax_lock) excl_queue.push_back(ar_beat);
       end
     endtask
 
@@ -2462,16 +2362,16 @@ package axi_test;
       while (!(ar_done && tot_r_flight_cnt == 0 &&
           (!AXI_ATOPS || (AXI_ATOPS && aw_done && atop_resp_r == '0))
       )) begin
-        automatic r_ace_beat_t r_ace_beat;
+        automatic r_beat_t r_beat;
         rand_wait(RESP_MIN_WAIT_CYCLES, RESP_MAX_WAIT_CYCLES);
         if (tot_r_flight_cnt > 0 || atop_resp_r > 0) begin
-          drv.recv_r(r_ace_beat);
-          if (r_ace_beat.r_last) begin
+          drv.recv_r(r_beat);
+          if (r_beat.r_last) begin
             cnt_sem.get();
-            if (atop_resp_r[r_ace_beat.r_id]) begin
-              atop_resp_r[r_ace_beat.r_id] = 1'b0;
+            if (atop_resp_r[r_beat.r_id]) begin
+              atop_resp_r[r_beat.r_id] = 1'b0;
             end else begin
-              r_flight_cnt[r_ace_beat.r_id]--;
+              r_flight_cnt[r_beat.r_id]--;
               tot_r_flight_cnt--;
             end
             cnt_sem.put();
@@ -2484,52 +2384,52 @@ package axi_test;
       automatic logic rand_success;
       repeat (n_writes) begin
         automatic bit excl = 1'b0;
-        automatic ax_ace_beat_t aw_ace_beat;
+        automatic ax_beat_t aw_beat;
         if (AXI_EXCLS && excl_queue.size() > 0) excl = $random();
         if (excl) begin
-          aw_ace_beat = excl_queue.pop_front();
+          aw_beat = excl_queue.pop_front();
         end else begin
-          aw_ace_beat = new_rand_burst(1'b0);
-          if (AXI_ATOPS) rand_atop_burst(aw_ace_beat);
+          aw_beat = new_rand_burst(1'b0);
+          if (AXI_ATOPS) rand_atop_burst(aw_beat);
         end
         while (tot_w_flight_cnt >= MAX_WRITE_TXNS) begin
           rand_wait(1, 1);
         end
-        legalize_id(1'b0, aw_ace_beat);
-        aw_ace_queue.push_back(aw_ace_beat);
-        w_queue.push_back(aw_ace_beat);
+        legalize_id(1'b0, aw_beat);
+        aw_queue.push_back(aw_beat);
+        w_queue.push_back(aw_beat);
       end
     endtask
 
     task send_aws(ref logic aw_done);
-      while (!(aw_done && aw_ace_queue.size() == 0)) begin
-        automatic ax_ace_beat_t aw_ace_beat;
-        wait (aw_ace_queue.size() > 0 || (aw_done && aw_ace_queue.size() == 0));
-        aw_ace_beat = aw_ace_queue.pop_front();
+      while (!(aw_done && aw_queue.size() == 0)) begin
+        automatic ax_beat_t aw_beat;
+        wait (aw_queue.size() > 0 || (aw_done && aw_queue.size() == 0));
+        aw_beat = aw_queue.pop_front();
         rand_wait(AX_MIN_WAIT_CYCLES, AX_MAX_WAIT_CYCLES);
-        drv.send_aw(aw_ace_beat);
+        drv.send_aw(aw_beat);
       end
     endtask
 
     task send_ws(ref logic aw_done);
       while (!(aw_done && w_queue.size() == 0)) begin
-        automatic ax_ace_beat_t aw_ace_beat;
+        automatic ax_beat_t aw_beat;
         automatic addr_t addr;
         static logic rand_success;
         wait (w_queue.size() > 0 || (aw_done && w_queue.size() == 0));
-        aw_ace_beat = w_queue.pop_front();
-        for (int unsigned i = 0; i < aw_ace_beat.ax_len + 1; i++) begin
+        aw_beat = w_queue.pop_front();
+        for (int unsigned i = 0; i < aw_beat.ax_len + 1; i++) begin
           automatic w_beat_t w_beat = new;
           automatic int unsigned begin_byte, end_byte, n_bytes;
           automatic logic [AXI_STRB_WIDTH-1:0] rand_strb, strb_mask;
-          addr = axi_pkg::beat_addr(aw_ace_beat.ax_addr, aw_ace_beat.ax_size, aw_ace_beat.ax_len,
-                                    aw_ace_beat.ax_burst, i);
+          addr = axi_pkg::beat_addr(aw_beat.ax_addr, aw_beat.ax_size, aw_beat.ax_len,
+                                    aw_beat.ax_burst, i);
           //rand_success = w_beat.randomize(); assert (rand_success);
           // Determine strobe.
           w_beat.w_strb = '0;
-          n_bytes = 2**aw_ace_beat.ax_size;
+          n_bytes = 2**aw_beat.ax_size;
           begin_byte = addr % AXI_STRB_WIDTH;
-          end_byte = ((begin_byte + n_bytes) >> aw_ace_beat.ax_size) << aw_ace_beat.ax_size;
+          end_byte = ((begin_byte + n_bytes) >> aw_beat.ax_size) << aw_beat.ax_size;
           strb_mask = '0;
           for (int unsigned b = begin_byte; b < end_byte; b++)
             strb_mask[b] = 1'b1;
@@ -2537,7 +2437,7 @@ package axi_test;
           //rand_success = std::randomize(rand_strb); assert (rand_success);
           w_beat.w_strb |= (rand_strb & strb_mask);
           // Determine last.
-          w_beat.w_last = (i == aw_ace_beat.ax_len);
+          w_beat.w_last = (i == aw_beat.ax_len);
           rand_wait(W_MIN_WAIT_CYCLES, W_MAX_WAIT_CYCLES);
           drv.send_w(w_beat);
         end
@@ -2603,31 +2503,31 @@ package axi_test;
     /// All responses are `axi_pkg::RESP_OKAY` when in this mode.
     parameter bit   MAPPED = 1'b0
   );
-    typedef axi_test::axi_ace_driver #(
+    typedef axi_ace_test::axi_ace_driver #(
       .AW(AW), .DW(DW), .IW(IW), .UW(UW), .TA(TA), .TT(TT)
     ) axi_ace_driver_t;
     typedef rand_id_queue_pkg::rand_id_queue #(
-      .data_t   (axi_ace_driver_t::ax_ace_beat_t),
+      .data_t   (axi_ace_driver_t::ax_beat_t),
       .ID_WIDTH (IW)
-    ) rand_ax_ace_beat_queue_t;
-    typedef axi_ace_driver_t::ax_ace_beat_t ax_ace_beat_t;
+    ) rand_ax_beat_queue_t;
+    typedef axi_ace_driver_t::ax_beat_t ax_beat_t;
     typedef axi_ace_driver_t::b_beat_t b_beat_t;
-    typedef axi_ace_driver_t::r_ace_beat_t r_ace_beat_t;
+    typedef axi_ace_driver_t::r_beat_t r_beat_t;
     typedef axi_ace_driver_t::w_beat_t w_beat_t;
 
     typedef logic [AW-1:0] addr_t;
     typedef logic [7:0]    byte_t;
 
     axi_ace_driver_t          drv;
-    rand_ax_ace_beat_queue_t  ar_ace_queue;
-    ax_ace_beat_t             aw_ace_queue[$];
+    rand_ax_beat_queue_t  ar_queue;
+    ax_beat_t             aw_queue[$];
     int unsigned          b_wait_cnt;
 
     // Memory array for when the `MAPPED` parameter is set.
     byte_t memory_q[addr_t];
 
     function new(
-      virtual AXI_ACE_BUS_DV #(
+      virtual AXI_BUS_DV #(
         .AXI_ADDR_WIDTH(AW),
         .AXI_DATA_WIDTH(DW),
         .AXI_ID_WIDTH(IW),
@@ -2635,7 +2535,7 @@ package axi_test;
       ) axi
     );
       this.drv = new(axi);
-      this.ar_ace_queue = new;
+      this.ar_queue = new;
       this.b_wait_cnt = 0;
       this.reset();
     endfunction
@@ -2660,92 +2560,92 @@ package axi_test;
 
     task recv_ars();
       forever begin
-        automatic ax_ace_beat_t ar_ace_beat;
+        automatic ax_beat_t ar_beat;
         rand_wait(AX_MIN_WAIT_CYCLES, AX_MAX_WAIT_CYCLES);
-        drv.recv_ar(ar_ace_beat);
+        drv.recv_ar(ar_beat);
         if (MAPPED) begin
-          assert (ar_ace_beat.ax_burst != axi_pkg::BURST_WRAP) else
+          assert (ar_beat.ax_burst != axi_pkg::BURST_WRAP) else
             $error("axi_pkg::BURST_WRAP not supported in MAPPED mode.");
         end
-        ar_ace_queue.push(ar_ace_beat.ax_id, ar_ace_beat);
+        ar_queue.push(ar_beat.ax_id, ar_beat);
       end
     endtask
 
     task send_rs();
       forever begin
         automatic logic rand_success;
-        automatic ax_ace_beat_t ar_ace_beat;
-        automatic r_ace_beat_t  r_ace_beat = new;
+        automatic ax_beat_t ar_beat;
+        automatic r_beat_t  r_beat = new;
         automatic addr_t    byte_addr;
-        wait (ar_ace_queue.size > 0);
-        ar_ace_beat      = ar_ace_queue.peek();
-        byte_addr    = axi_pkg::aligned_addr(ar_ace_beat.ax_addr, axi_pkg::size_t'($clog2(DW/8)));
+        wait (ar_queue.size > 0);
+        ar_beat      = ar_queue.peek();
+        byte_addr    = axi_pkg::aligned_addr(ar_beat.ax_addr, axi_pkg::size_t'($clog2(DW/8)));
         //rand_success = std::randomize(r_beat); assert(rand_success);
         //rand_success = r_beat.randomize(); assert(rand_success);
         if (MAPPED) begin
           // Either use the actual data, or save the random generated.
           for (int unsigned i = 0; i < (DW/8); i++) begin
             if (this.memory_q.exists(byte_addr)) begin
-              r_ace_beat.r_data[i*8+:8] = this.memory_q[byte_addr];
+              r_beat.r_data[i*8+:8] = this.memory_q[byte_addr];
             end else begin
-              this.memory_q[byte_addr] = r_ace_beat.r_data[i*8+:8];
+              this.memory_q[byte_addr] = r_beat.r_data[i*8+:8];
             end
             byte_addr++;
           end
-          r_ace_beat.r_resp = axi_pkg::RESP_OKAY;
+          r_beat.r_resp = axi_pkg::RESP_OKAY;
         end
-        r_ace_beat.r_id = ar_ace_beat.ax_id;
-        if (RAND_RESP && !ar_ace_beat.ax_atop[axi_pkg::ATOP_R_RESP])
-          r_ace_beat.r_resp[1] = $random();
-        if (ar_ace_beat.ax_lock)
-          r_ace_beat.r_resp[0]= $random();
+        r_beat.r_id = ar_beat.ax_id;
+        if (RAND_RESP && !ar_beat.ax_atop[axi_pkg::ATOP_R_RESP])
+          r_beat.r_resp[1] = $random();
+        if (ar_beat.ax_lock)
+          r_beat.r_resp[0]= $random();
         rand_wait(R_MIN_WAIT_CYCLES, R_MAX_WAIT_CYCLES);
-        if (ar_ace_beat.ax_len == '0) begin
-          r_ace_beat.r_last = 1'b1;
-          void'(ar_ace_queue.pop_id(ar_ace_beat.ax_id));
+        if (ar_beat.ax_len == '0) begin
+          r_beat.r_last = 1'b1;
+          void'(ar_queue.pop_id(ar_beat.ax_id));
         end else begin
-          if ((ar_ace_beat.ax_burst == axi_pkg::BURST_INCR) && MAPPED) begin
-            ar_ace_beat.ax_addr = axi_pkg::aligned_addr(ar_ace_beat.ax_addr, ar_ace_beat.ax_size) +
-                                  2**ar_ace_beat.ax_size;
+          if ((ar_beat.ax_burst == axi_pkg::BURST_INCR) && MAPPED) begin
+            ar_beat.ax_addr = axi_pkg::aligned_addr(ar_beat.ax_addr, ar_beat.ax_size) +
+                                  2**ar_beat.ax_size;
           end
-          ar_ace_beat.ax_len--;
-          ar_ace_queue.set(ar_ace_beat.ax_id, ar_ace_beat);
+          ar_beat.ax_len--;
+          ar_queue.set(ar_beat.ax_id, ar_beat);
         end
-        drv.send_r(r_ace_beat);
+        drv.send_r(r_beat);
       end
     endtask
 
     task recv_aws();
       forever begin
-        automatic ax_ace_beat_t aw_ace_beat;
+        automatic ax_beat_t aw_beat;
         rand_wait(AX_MIN_WAIT_CYCLES, AX_MAX_WAIT_CYCLES);
-        drv.recv_aw(aw_ace_beat);
+        drv.recv_aw(aw_beat);
         if (MAPPED) begin
-          assert (aw_ace_beat.ax_atop == '0) else
+          assert (aw_beat.ax_atop == '0) else
             $error("ATOP not supported in MAPPED mode.");
-          assert (aw_ace_beat.ax_burst != axi_pkg::BURST_WRAP) else
+          assert (aw_beat.ax_burst != axi_pkg::BURST_WRAP) else
             $error("axi_pkg::BURST_WRAP not supported in MAPPED mode.");
         end
-        aw_ace_queue.push_back(aw_ace_beat);
+        aw_queue.push_back(aw_beat);
         // Atomic{Load,Swap,Compare}s require an R response.
-        if (aw_ace_beat.ax_atop[axi_pkg::ATOP_R_RESP]) begin
-          ar_ace_queue.push(aw_ace_beat.ax_id, aw_ace_beat);
+        if (aw_beat.ax_atop[axi_pkg::ATOP_R_RESP]) begin
+          ar_queue.push(aw_beat.ax_id, aw_beat);
         end
       end
     endtask
 
     task recv_ws();
       forever begin
-        automatic ax_ace_beat_t aw_ace_beat;
+        automatic ax_beat_t aw_beat;
         automatic addr_t    byte_addr;
         forever begin
           automatic w_beat_t w_beat;
           rand_wait(RESP_MIN_WAIT_CYCLES, RESP_MAX_WAIT_CYCLES);
           drv.recv_w(w_beat);
           if (MAPPED) begin
-            wait (aw_ace_queue.size() > 0);
-            aw_ace_beat = aw_ace_queue[0];
-            byte_addr    = axi_pkg::aligned_addr(aw_ace_beat.ax_addr, $clog2(DW/8));
+            wait (aw_queue.size() > 0);
+            aw_beat = aw_queue[0];
+            byte_addr    = axi_pkg::aligned_addr(aw_beat.ax_addr, $clog2(DW/8));
 
             // Write Data if the strobe is defined
             for (int unsigned i = 0; i < (DW/8); i++) begin
@@ -2755,11 +2655,11 @@ package axi_test;
               byte_addr++;
             end
             // Update address in beat
-            if (aw_ace_beat.ax_burst == axi_pkg::BURST_INCR) begin
-              aw_ace_beat.ax_addr = axi_pkg::aligned_addr(aw_ace_beat.ax_addr, aw_ace_beat.ax_size) +
-                                    2**aw_ace_beat.ax_size;
+            if (aw_beat.ax_burst == axi_pkg::BURST_INCR) begin
+              aw_beat.ax_addr = axi_pkg::aligned_addr(aw_beat.ax_addr, aw_beat.ax_size) +
+                                    2**aw_beat.ax_size;
             end
-            aw_ace_queue[0] = aw_ace_beat;
+            aw_queue[0] = aw_beat;
           end
           if (w_beat.w_last)
             break;
@@ -2770,16 +2670,16 @@ package axi_test;
 
     task send_bs();
       forever begin
-        automatic ax_ace_beat_t aw_ace_beat;
+        automatic ax_beat_t aw_beat;
         automatic b_beat_t b_beat = new;
         automatic logic rand_success;
-        wait (b_wait_cnt > 0 && (aw_ace_queue.size() != 0));
-        aw_ace_beat = aw_ace_queue.pop_front();
+        wait (b_wait_cnt > 0 && (aw_queue.size() != 0));
+        aw_beat = aw_queue.pop_front();
         //rand_success = b_beat.randomize(); assert(rand_success);
-        b_beat.b_id = aw_ace_beat.ax_id;
-        if (RAND_RESP && !aw_ace_beat.ax_atop[axi_pkg::ATOP_R_RESP])
+        b_beat.b_id = aw_beat.ax_id;
+        if (RAND_RESP && !aw_beat.ax_atop[axi_pkg::ATOP_R_RESP])
           b_beat.b_resp[1] = $random();
-        if (aw_ace_beat.ax_lock) begin
+        if (aw_beat.ax_lock) begin
           b_beat.b_resp[0]= $random();
         end
         rand_wait(RESP_MIN_WAIT_CYCLES, RESP_MAX_WAIT_CYCLES);
@@ -2802,6 +2702,11 @@ package axi_test;
     endtask
 
   endclass
+
+
+
+
+
   // AXI4-Lite random master and slave
   class axi_lite_rand_master #(
     // AXI interface parameters
@@ -2825,14 +2730,14 @@ package axi_test;
   );
     typedef axi_test::axi_lite_driver #(
       .AW(AW), .DW(DW), .TA(TA), .TT(TT)
-    ) axi_driver_t;
+    ) axi_ace_driver_t;
 
     typedef logic [AW-1:0]   addr_t;
     typedef logic [DW-1:0]   data_t;
     typedef logic [DW/8-1:0] strb_t;
 
     string         name;
-    axi_driver_t   drv;
+    axi_ace_driver_t   drv;
     addr_t         aw_queue[$],
                    ar_queue[$];
     logic          b_queue[$];
