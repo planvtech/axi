@@ -182,6 +182,22 @@ exec_test() {
                 done
             done
             ;;
+        axi_ace_xbar)
+            for NumMst in 1 6; do
+                for NumSlv in 1 8; do
+                    for Atop in 0 1; do
+                        for Exclusive in 0 1; do
+                            for UniqueIds in 0 1; do
+                                call_vsim tb_axi_ace_xbar -gTbNumMst=$NumMst -gTbNumSlv=$NumSlv \
+                                        -gTbEnAtop=$Atop -gTbEnExcl=$Exclusive \
+                                        -gTbUniqueIds=$UniqueIds
+                            done
+                        done
+                    done
+                done
+            done
+            ;;
+        
         axi_to_mem_banked)
             for MEM_LAT in 1 2; do
                 for BANK_FACTOR in 1 2; do

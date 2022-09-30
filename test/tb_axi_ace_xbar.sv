@@ -278,6 +278,7 @@ module tb_axi_ace_xbar #(
     axi_chan_logger #(
       .TestTime  ( TestTime      ), // Time after clock, where sampling happens
       .LoggerName( $sformatf("axi_logger_master_%0d", i)),
+      .snoop_en  (        1      ),
       .aw_chan_t ( aw_chan_mst_t ), // axi AW type
       .w_chan_t  (  w_chan_t     ), // axi  W type
       .b_chan_t  (  b_chan_mst_t ), // axi  B type
@@ -314,6 +315,7 @@ module tb_axi_ace_xbar #(
     axi_chan_logger #(
       .TestTime  ( TestTime      ), // Time after clock, where sampling happens
       .LoggerName( $sformatf("axi_logger_slave_%0d",i)),
+      .snoop_en  (        1      ),
       .aw_chan_t ( aw_chan_slv_t ), // axi AW type
       .w_chan_t  (  w_chan_t     ), // axi  W type
       .b_chan_t  (  b_chan_slv_t ), // axi  B type

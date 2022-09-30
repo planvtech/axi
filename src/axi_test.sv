@@ -1945,7 +1945,7 @@ package axi_test;
       beat.ax_user    = axi.ar_user;
       beat.ax_arsnoop = axi.ar_arsnoop;
       beat.ax_bar     = axi.ar_bar;
-      beat.ax_domain  = axi.aw_awsnoop;
+      beat.ax_domain  = axi.ar_domain;
       cycle_end();
     endtask
 
@@ -2357,6 +2357,10 @@ package axi_test;
         ar_ace_beat.ax_len = n_bytes / 2**size;
         // The address must be aligned to the total number of bytes in the burst.
         ar_ace_beat.ax_addr = ar_ace_beat.ax_addr & ~(n_bytes-1);
+        ar_ace_beat.ax_arsnoop = $urandom();
+        ar_ace_beat.ax_bar = $urandom();
+        ar_ace_beat.ax_domain = $urandom();
+
       end
     endfunction
 
@@ -3635,6 +3639,7 @@ endpackage
 module axi_chan_logger #(
   parameter time TestTime     = 8ns,          // Time after clock, where sampling happens
   parameter string LoggerName = "axi_logger", // name of the logger
+  parameter logic  snoop_en   = '0,           // enable logging for ACE
   parameter type aw_chan_t    = logic,        // axi AW type
   parameter type  w_chan_t    = logic,        // axi  W type
   parameter type  b_chan_t    = logic,        // axi  B type
@@ -3675,6 +3680,7 @@ module axi_chan_logger #(
   b_chan_t  b_queue[$];
   aw_chan_t ar_queues[NoIds-1:0][$];
   r_chan_t  r_queues[NoIds-1:0][$];
+ 
 
   // channel sampling into queues
   always @(posedge clk_i) #TestTime begin : proc_channel_sample
@@ -3682,6 +3688,7 @@ module axi_chan_logger #(
     automatic int       fd;
     automatic string    log_file;
     automatic string    log_str;
+       
     // only execute when reset is high
     if (rst_ni) begin
       // AW channel
@@ -3691,7 +3698,7 @@ module axi_chan_logger #(
         fd = $fopen(log_file, "a");
         if (fd) begin
           log_str = $sformatf("%0t> ID: %h AW on channel: LEN: %d, ATOP: %b",
-                        $time, aw_chan_i.id, aw_chan_i.len, aw_chan_i.atop);
+                        $time, aw_chan_i.id, aw_chan_i.len, aw_chan_i.atop);             
           $fdisplay(fd, log_str);
           $fclose(fd);
         end
@@ -3756,6 +3763,13 @@ module axi_chan_logger #(
         ar_beat.region = ar_chan_i.region;
         ar_beat.atop   = '0;
         ar_beat.user   = ar_chan_i.user;
+
+        if(snoop_en) begin
+          ar_beat.awsnoop=ar_chan_i.arsnoop;
+          ar_beat.bar=ar_chan_i.bar;
+          ar_beat.domain=ar_chan_i.domain;
+        end
+
         ar_queues[ar_chan_i.id].push_back(ar_beat);
       end
       // R channel
@@ -3816,8 +3830,13 @@ module axi_chan_logger #(
         aw_beat = aw_queue[0];
         w_beat  = w_queue.pop_front();
 
-        log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b",
-                        $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop);
+        if (snoop_en) begin
+          log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b, AWSNOOP: %b",
+                          $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop, aw_beat.awsnoop);
+        end else begin 
+          log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b, AWSNOOP: %b",
+                          $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop);
+        end                
 
         log_name = $sformatf("./axi_log/%s/write.log", LoggerName);
         fd = $fopen(log_name, "a");
@@ -3859,8 +3878,14 @@ module axi_chan_logger #(
           log_name = $sformatf("./axi_log/%s/read_%0h.log", LoggerName, i);
           fd = $fopen(log_name, "a");
           if (fd) begin
-            log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b",
-                          $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop);
+            if (snoop_en) begin
+              log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b, ARSNOOP: %b",
+                              $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop, ar_beat.awsnoop);
+            end else begin
+              log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b",
+                              $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop);
+            end
+
             $fdisplay(fd, log_string);
             // write out error if last beat does not match!
             if (r_beat.last && !(ar_beat.len == no_r_beat[i])) begin
