@@ -10,8 +10,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 ### Changed
+- `axi_demux`: Replace write FIFO (`w_fifo`) with a write credit counter.
 
 ### Fixed
+
+
+## 0.38.0 - 2022-09-28
+
+### Added
+- Add `axi_dumper` and `axi_dumper_interpret` script to dump log from an AXI bus for debugging
+  purposes.
+- Add FuseSoC and Vivado XSIM limited test to CI
+- `assign.svh`: Add macros to assign flat buses using the Vivado naming style.
+- `axi_lfsr` and `axi_lite_lfsr`: Add AXI4 and AXI4 Lite LFSR Subordinate devices.
+- `axi_xp`: Add crosspoint with homomorphous slave and master ports.
+
+### Changed
+- Improve compatibility with FuseSoC
+- Improve compatibility with Vivado XSIM
+- Performance improvements to `axi_to_mem`
+- Use `scripts/update_authors` to update authors, slight manual fixes performed.
+
+`v0.38.0` is fully **backward-compatible** to `v0.36.0` and `v0.37.0`.
 
 
 ## 0.37.0 - 2022-08-30
@@ -45,6 +65,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   multiplexer.
 
 `v0.37.0` is fully **backward-compatible** to `v0.36.0`.
+
 
 ## 0.36.0 - 2022-07-07
 
