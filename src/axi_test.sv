@@ -1378,7 +1378,7 @@ package axi_test;
         // Keeping alternate implementation for XSIM only
         rand_success = std::randomize(r_beat); assert(rand_success);
 `else
-        rand_success = r_beat.randomize(); assert(rand_success);
+        rand_success = 1;// r_beat.randomize(); assert(rand_success);
 `endif
         if (MAPPED) begin
           // Either use the actual data, or save the random generated.

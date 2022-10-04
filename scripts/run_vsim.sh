@@ -181,13 +181,13 @@ exec_test() {
                 done
             done
             ;;
-        axi_ace_xbar)
+        ace_xbar)
             for NumMst in 1 6; do
                 for NumSlv in 1 8; do
                     for Atop in 0 1; do
                         for Exclusive in 0 1; do
                             for UniqueIds in 0 1; do
-                                call_vsim tb_axi_ace_xbar -gTbNumMst=$NumMst -gTbNumSlv=$NumSlv \
+                                call_vsim tb_ace_xbar -gTbNumMst=$NumMst -gTbNumSlv=$NumSlv \
                                         -gTbEnAtop=$Atop -gTbEnExcl=$Exclusive \
                                         -gTbUniqueIds=$UniqueIds
                             done

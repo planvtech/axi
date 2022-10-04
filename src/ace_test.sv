@@ -1370,7 +1370,6 @@ endpackage
 module ace_chan_logger #(
   parameter time TestTime     = 8ns,          // Time after clock, where sampling happens
   parameter string LoggerName = "ace_logger", // name of the logger
-  parameter logic  snoop_en   = '0,           // enable logging for ACE
   parameter type aw_chan_t    = logic,        // axi AW type
   parameter type  w_chan_t    = logic,        // axi  W type
   parameter type  b_chan_t    = logic,        // axi  B type
@@ -1492,13 +1491,9 @@ module ace_chan_logger #(
         ar_beat.region = ar_chan_i.region;
         ar_beat.atop   = '0;
         ar_beat.user   = ar_chan_i.user;
-
-        if(snoop_en) begin
-          ar_beat.awsnoop=ar_chan_i.arsnoop;
-          ar_beat.bar=ar_chan_i.bar;
-          ar_beat.domain=ar_chan_i.domain;
-        end
-
+        ar_beat.awsnoop=ar_chan_i.arsnoop;
+        ar_beat.bar=ar_chan_i.bar;
+        ar_beat.domain=ar_chan_i.domain;
         ar_queues[ar_chan_i.id].push_back(ar_beat);
       end
       // R channel
@@ -1559,13 +1554,10 @@ module ace_chan_logger #(
         aw_beat = aw_queue[0];
         w_beat  = w_queue.pop_front();
 
-        if (snoop_en) begin
-          log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b, AWSNOOP: %b",
-                          $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop, aw_beat.awsnoop);
-        end else begin 
-          log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b, AWSNOOP: %b",
-                          $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop);
-        end                
+        
+        log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b, AWSNOOP: %b",
+                        $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop, aw_beat.awsnoop);
+              
 
         log_name = $sformatf("./axi_log/%s/write.log", LoggerName);
         fd = $fopen(log_name, "a");
@@ -1607,13 +1599,8 @@ module ace_chan_logger #(
           log_name = $sformatf("./axi_log/%s/read_%0h.log", LoggerName, i);
           fd = $fopen(log_name, "a");
           if (fd) begin
-            if (snoop_en) begin
-              log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b, ARSNOOP: %b",
-                              $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop, ar_beat.awsnoop);
-            end else begin
-              log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b",
-                              $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop);
-            end
+            log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b, ARSNOOP: %b",
+                            $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop, ar_beat.awsnoop);
 
             $fdisplay(fd, log_string);
             // write out error if last beat does not match!
