@@ -10,10 +10,9 @@
 // specific language governing permissions and limitations under the License.
 //
 // Authors:
-// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
+// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
 // - Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
-// - Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 // - Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
 
 
@@ -1212,7 +1211,13 @@ package axi_test;
           automatic logic [AXI_STRB_WIDTH-1:0] rand_strb, strb_mask;
           addr = axi_pkg::beat_addr(aw_beat.ax_addr, aw_beat.ax_size, aw_beat.ax_len,
                                     aw_beat.ax_burst, i);
+`ifdef XSIM
+          // std::randomize(w_beat) may behave differently to w_beat.randomize() wrt. limited ranges
+          // Keeping alternate implementation for XSIM only
+          rand_success = std::randomize(w_beat); assert (rand_success);
+`else
           //rand_success = w_beat.randomize(); assert (rand_success);
+`endif
           // Determine strobe.
           w_beat.w_strb = '0;
           n_bytes = 2**aw_beat.ax_size;
@@ -1368,8 +1373,13 @@ package axi_test;
         wait (ar_queue.size > 0);
         ar_beat      = ar_queue.peek();
         byte_addr    = axi_pkg::aligned_addr(ar_beat.ax_addr, axi_pkg::size_t'($clog2(DW/8)));
-        //rand_success = std::randomize(r_beat); assert(rand_success);
-        //rand_success = r_beat.randomize(); assert(rand_success);
+`ifdef XSIM
+        // std::randomize(r_beat) may behave differently to r_beat.randomize() wrt. limited ranges
+        // Keeping alternate implementation for XSIM only
+        rand_success = std::randomize(r_beat); assert(rand_success);
+`else
+        rand_success = r_beat.randomize(); assert(rand_success);
+`endif
         if (MAPPED) begin
           // Either use the actual data, or save the random generated.
           for (int unsigned i = 0; i < (DW/8); i++) begin
@@ -1463,7 +1473,13 @@ package axi_test;
         automatic logic rand_success;
         wait (b_wait_cnt > 0 && (aw_queue.size() != 0));
         aw_beat = aw_queue.pop_front();
-        //rand_success = b_beat.randomize(); assert(rand_success);
+`ifdef XSIM
+        // std::randomize(b_beat) may behave differently to b_beat.randomize() wrt. limited ranges
+        // Keeping alternate implementation for XSIM only
+        rand_success = std::randomize(b_beat); assert (rand_success);
+`else
+        //rand_success = b_beat.randomize(); assert (rand_success);
+`endif
         b_beat.b_id = aw_beat.ax_id;
         if (RAND_RESP && !aw_beat.ax_atop[axi_pkg::ATOP_R_RESP])
           b_beat.b_resp[1] = $random();

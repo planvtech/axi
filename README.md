@@ -39,8 +39,10 @@ In addition to the documents linked in the following table, we are setting up [d
 | [`axi_isolate`](src/axi_isolate.sv)                  | A module that can isolate downstream slaves from receiving new AXI4 transactions.                    |                                |
 | [`axi_iw_converter`](src/axi_iw_converter.sv)        | Convert between any two AXI ID widths.                                                               | [Doc][doc.axi_iw_converter]    |
 | [`axi_join`](src/axi_join.sv)                        | A connector that joins two AXI interfaces.                                                           |                                |
+| [`axi_lfsr`](src/axi_lfsr.sv)                        | AXI4-attached LFSR; read returns pseudo-random data, writes are compressed into a checksum.          |                                |
 | [`axi_lite_demux`](src/axi_lite_demux.sv)            | Demultiplexes an AXI4-Lite bus from one slave port to multiple master ports.                         | [Doc](doc/axi_lite_demux.md)   |
 | [`axi_lite_join`](src/axi_lite_join.sv)              | A connector that joins two AXI-Lite interfaces.                                                      |                                |
+| [`axi_lite_lfsr`](src/axi_lite_lfsr.sv)              | AXI4-Lite-attached LFSR; read returns pseudo-random data, writes are compressed into a checksum.     |                                |
 | [`axi_lite_mailbox`](src/axi_lite_mailbox.sv)        | A AXI4-Lite Mailbox with two slave ports and usage triggered irq.                                    | [Doc](doc/axi_lite_mailbox.md) |
 | [`axi_lite_mux`](src/axi_lite_mux.sv)                | Multiplexes AXI4-Lite slave ports down to one master port.                                           | [Doc](doc/axi_lite_mux.md)     |
 | [`axi_lite_regs`](src/axi_lite_regs.sv)              | AXI4-Lite registers with optional read-only and protection features.                                 | [Doc][doc.axi_lite_regs]       |
@@ -57,6 +59,7 @@ In addition to the documents linked in the following table, we are setting up [d
 | [`axi_to_axi_lite`](src/axi_to_axi_lite.sv)          | AXI4 to AXI4-Lite protocol converter.                                                                |                                |
 | [`axi_to_mem`](src/axi_to_mem.sv)                    | AXI4 to memory protocol (req, gnt, rvalid) converter. Additional banked, interleaved, split variant. |                                |
 | [`axi_xbar`](src/axi_xbar.sv)                        | Fully-connected AXI4+ATOP crossbar with an arbitrary number of slave and master ports.               | [Doc](doc/axi_xbar.md)         |
+| [`axi_xp`](src/axi_xp.sv)                            | AXI Crosspoint (XP) with homomorphous slave and master ports.                                        |                                |
 
 ### Simulation-Only Modules
 
@@ -66,6 +69,7 @@ In addition to the modules above, which are available in synthesis and simulatio
 |------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
 | [`axi_chan_logger`](src/axi_test.sv)                 | Logs the transactions of an AXI4(+ATOPs) port to files.                                                |
 | [`axi_driver`](src/axi_test.sv)                      | Low-level driver for AXI4(+ATOPs) that can send and receive individual beats on any channel.           |
+| [`axi_dumper`](src/axi_dumper.sv)                    | Dumps log to file to be interpreted by `axi_dumper_interpret` script for debugging purposes.           |
 | [`axi_lite_driver`](src/axi_test.sv)                 | Low-level driver for AXI4-Lite that can send and receive individual beats on any channel.              |
 | [`axi_lite_rand_master`](src/axi_test.sv)            | AXI4-Lite master component that issues random transactions within user-defined constraints.            |
 | [`axi_lite_rand_slave`](src/axi_test.sv)             | AXI4-Lite slave component that responds to transactions with constrainable random delays and data.     |

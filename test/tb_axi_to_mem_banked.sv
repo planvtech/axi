@@ -10,6 +10,7 @@
 
 // Authors:
 // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
+// - Michael Rogenmoser <michaero@iis.ee.ethz.ch>
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
