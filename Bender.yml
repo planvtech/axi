@@ -30,8 +30,10 @@ sources:
   # levels 1 and 0, etc. Files within a level are ordered alphabetically.
   # Level 0
   - src/axi_pkg.sv
+  - src/ace_pkg.sv
   # Level 1
   - src/axi_intf.sv
+  - src/ace_intf.sv
   # Level 2
   - src/axi_atop_filter.sv
   - src/axi_burst_splitter.sv
@@ -75,6 +77,7 @@ sources:
   - src/axi_iw_converter.sv
   - src/axi_lite_xbar.sv
   - src/axi_xbar.sv
+  - src/ace_xbar.sv
   # Level 5
   - src/axi_xp.sv
 
@@ -87,12 +90,14 @@ sources:
       - src/axi_dumper.sv
       - src/axi_sim_mem.sv
       - src/axi_test.sv
+      - src/ace_test.sv
 
   - target: test
     files:
       # Level 0
       - test/tb_axi_dw_pkg.sv
       - test/tb_axi_xbar_pkg.sv
+      - test/tb_ace_xbar_pkg.sv
       # Level 1
       - test/tb_axi_addr_test.sv
       - test/tb_axi_atop_filter.sv
@@ -114,3 +119,4 @@ sources:
       - test/tb_axi_to_axi_lite.sv
       - test/tb_axi_to_mem_banked.sv
       - test/tb_axi_xbar.sv
+      - test/tb_ace_xbar.sv
