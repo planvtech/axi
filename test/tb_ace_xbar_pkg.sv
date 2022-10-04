@@ -1,4 +1,6 @@
 // Copyright (c) 2019 ETH Zurich and University of Bologna.
+// Copyright (c) 2022 PlanV GmbH
+//
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -8,17 +10,14 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 //
-// Authors:
-// - Florian Zaruba <zarubaf@iis.ee.ethz.ch>
-// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
 
-// `axi_xbar_monitor` implements an AXI bus monitor that is tuned for the AXI crossbar.
+// `ace_xbar_monitor` implements an ACE bus monitor that is tuned for the ACE crossbar.
 // It snoops on each of the slaves and master ports of the crossbar and
 // populates FIFOs and ID queues to validate that no AXI beats get
 // lost or sent to the wrong destination.
 
-package tb_axi_ace_xbar_pkg;
-  class axi_ace_xbar_monitor #(
+package tb_ace_xbar_pkg;
+  class ace_xbar_monitor #(
     parameter int unsigned AxiAddrWidth,
     parameter int unsigned AxiDataWidth,
     parameter int unsigned AxiIdWidthMasters,
@@ -70,13 +69,13 @@ package tb_axi_ace_xbar_pkg;
     //-----------------------------------------
     // Monitoring virtual interfaces
     //-----------------------------------------
-    virtual AXI_ACE_BUS_DV #(
+    virtual ACE_BUS_DV #(
       .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
       .AXI_DATA_WIDTH ( AxiDataWidth      ),
       .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
       .AXI_USER_WIDTH ( AxiUserWidth      )
     ) masters_axi [NoMasters-1:0];
-    virtual AXI_ACE_BUS_DV #(
+    virtual ACE_BUS_DV #(
       .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
       .AXI_DATA_WIDTH ( AxiDataWidth      ),
       .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
@@ -107,13 +106,13 @@ package tb_axi_ace_xbar_pkg;
     // Constructor
     //-----------------------------------------
     function new(
-      virtual AXI_ACE_BUS_DV #(
+      virtual ACE_BUS_DV #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
         .AXI_DATA_WIDTH ( AxiDataWidth      ),
         .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
         .AXI_USER_WIDTH ( AxiUserWidth      )
       ) axi_masters_vif [NoMasters-1:0],
-      virtual AXI_ACE_BUS_DV #(
+      virtual ACE_BUS_DV #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
         .AXI_DATA_WIDTH ( AxiDataWidth      ),
         .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
@@ -499,5 +498,5 @@ package tb_axi_ace_xbar_pkg;
         $error("Simulation did not conduct any tests!");
       end
     endtask : print_result
-  endclass : axi_ace_xbar_monitor
+  endclass : ace_xbar_monitor
 endpackage

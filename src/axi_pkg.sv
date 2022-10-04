@@ -40,15 +40,6 @@ package axi_pkg;
   /// AXI5 Non-Secure Address Identifier.
   typedef logic [3:0] nsaid_t;
 
-  /// Support for snoop channels
-  typedef logic [3:0] arsnoop_t; 
-  typedef logic [2:0] awsnoop_t; 
-  typedef logic [1:0] bar_t; 
-  typedef logic [1:0] domain_t; 
-  typedef logic [0:0] awunique_t;
-  typedef logic [3:0] rresp_t;  
-
-
   /// In a fixed burst:
   /// - The address is the same for every transfer in the burst.
   /// - The byte lanes that are valid are constant for all beats in the burst.  However, within

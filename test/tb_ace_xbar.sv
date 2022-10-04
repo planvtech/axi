@@ -1,4 +1,6 @@
 // Copyright (c) 2019 ETH Zurich and University of Bologna.
+// Copyright (c) 2022 PlanV GmbH
+//
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -19,10 +21,10 @@
 // master and slave port and models the crossbar with a network of FIFOs, checks whether each
 // transaction follows the expected route.
 
-`include "axi/typedef.svh"
-`include "axi/assign.svh"
+`include "ace/typedef.svh"
+`include "ace/assign.svh"
 
-module tb_axi_ace_xbar #(
+module tb_ace_xbar #(
   parameter bit TbEnAtop = 1'b1,            // enable atomic operations (ATOPs)
   parameter bit TbEnExcl = 1'b0,            // enable exclusive accesses
   parameter bit TbUniqueIds = 1'b0,         // restrict to only unique IDs
@@ -68,21 +70,21 @@ module tb_axi_ace_xbar #(
   typedef logic [AxiStrbWidth-1:0]      strb_t;
   typedef logic [AxiUserWidth-1:0]      user_t;
 
-  `AXI_ACE_TYPEDEF_AW_CHAN_T(aw_chan_mst_t, addr_t, id_mst_t, user_t)
-  `AXI_ACE_TYPEDEF_AW_CHAN_T(aw_chan_slv_t, addr_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_AW_CHAN_T(aw_chan_mst_t, addr_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_AW_CHAN_T(aw_chan_slv_t, addr_t, id_slv_t, user_t)
   `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
   `AXI_TYPEDEF_B_CHAN_T(b_chan_mst_t, id_mst_t, user_t)
   `AXI_TYPEDEF_B_CHAN_T(b_chan_slv_t, id_slv_t, user_t)
 
-  `AXI_ACE_TYPEDEF_AR_CHAN_T(ar_chan_mst_t, addr_t, id_mst_t, user_t)
-  `AXI_ACE_TYPEDEF_AR_CHAN_T(ar_chan_slv_t, addr_t, id_slv_t, user_t)
-  `AXI_ACE_TYPEDEF_R_CHAN_T(r_chan_mst_t, data_t, id_mst_t, user_t)
-  `AXI_ACE_TYPEDEF_R_CHAN_T(r_chan_slv_t, data_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_AR_CHAN_T(ar_chan_mst_t, addr_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_AR_CHAN_T(ar_chan_slv_t, addr_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_R_CHAN_T(r_chan_mst_t, data_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_R_CHAN_T(r_chan_slv_t, data_t, id_slv_t, user_t)
 
-  `AXI_ACE_TYPEDEF_REQ_T(mst_req_t, aw_chan_mst_t, w_chan_t, ar_chan_mst_t)
-  `AXI_ACE_TYPEDEF_RESP_T(mst_resp_t, b_chan_mst_t, r_chan_mst_t)
-  `AXI_ACE_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
-  `AXI_ACE_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
+  `ACE_TYPEDEF_REQ_T(mst_req_t, aw_chan_mst_t, w_chan_t, ar_chan_mst_t)
+  `ACE_TYPEDEF_RESP_T(mst_resp_t, b_chan_mst_t, r_chan_mst_t)
+  `ACE_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
+  `ACE_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
 
   localparam rule_t [xbar_cfg.NoAddrRules-1:0] AddrMap = '{
     '{idx: 32'd7 % TbNumSlv, start_addr: 32'h0001_0000, end_addr: 32'h0001_1000},
@@ -95,7 +97,7 @@ module tb_axi_ace_xbar #(
     '{idx: 32'd0 % TbNumSlv, start_addr: 32'h0000_0000, end_addr: 32'h0000_3000}
   };
 
-  typedef axi_test::axi_ace_rand_master #(
+  typedef ace_test::ace_rand_master #(
     // AXI interface parameters
     .AW ( AxiAddrWidth       ),
     .DW ( AxiDataWidth       ),
@@ -111,7 +113,7 @@ module tb_axi_ace_xbar #(
     .AXI_ATOPS      ( TbEnAtop ),
     .UNIQUE_IDS     ( TbUniqueIds )
   ) axi_rand_master_t;
-  typedef axi_test::axi_ace_rand_slave #(
+  typedef ace_test::ace_rand_slave #(
     // AXI interface parameters
     .AW ( AxiAddrWidth     ),
     .DW ( AxiDataWidth     ),
@@ -141,52 +143,52 @@ module tb_axi_ace_xbar #(
   // -------------------------------
   // AXI Interfaces
   // -------------------------------
-  AXI_ACE_BUS #(
+  ACE_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
     .AXI_DATA_WIDTH ( AxiDataWidth      ),
     .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
     .AXI_USER_WIDTH ( AxiUserWidth      )
   ) master [TbNumMst-1:0] ();
-  AXI_ACE_BUS_DV #(
+  ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
     .AXI_DATA_WIDTH ( AxiDataWidth      ),
     .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
     .AXI_USER_WIDTH ( AxiUserWidth      )
   ) master_dv [TbNumMst-1:0] (clk);
-  AXI_ACE_BUS_DV #(
+  ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
     .AXI_DATA_WIDTH ( AxiDataWidth      ),
     .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
     .AXI_USER_WIDTH ( AxiUserWidth      )
   ) master_monitor_dv [TbNumMst-1:0] (clk);
   for (genvar i = 0; i < TbNumMst; i++) begin : gen_conn_dv_masters
-    `AXI_ACE_ASSIGN (master[i], master_dv[i])
-    `AXI_ACE_ASSIGN_TO_REQ(masters_req[i], master[i])
-    `AXI_ACE_ASSIGN_TO_RESP(masters_resp[i], master[i])
+    `ACE_ASSIGN (master[i], master_dv[i])
+    `ACE_ASSIGN_TO_REQ(masters_req[i], master[i])
+    `ACE_ASSIGN_TO_RESP(masters_resp[i], master[i])
   end
 
-  AXI_ACE_BUS #(
+  ACE_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
   ) slave [TbNumSlv-1:0] ();
-  AXI_ACE_BUS_DV #(
+  ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
   ) slave_dv [TbNumSlv-1:0](clk);
-  AXI_ACE_BUS_DV #(
+  ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
   ) slave_monitor_dv [TbNumSlv-1:0](clk);
   for (genvar i = 0; i < TbNumSlv; i++) begin : gen_conn_dv_slaves
-    `AXI_ACE_ASSIGN(slave_dv[i], slave[i])
-    `AXI_ACE_ASSIGN_TO_REQ(slaves_req[i], slave[i])
-    `AXI_ACE_ASSIGN_TO_RESP(slaves_resp[i], slave[i])
+    `ACE_ASSIGN(slave_dv[i], slave[i])
+    `ACE_ASSIGN_TO_REQ(slaves_req[i], slave[i])
+    `ACE_ASSIGN_TO_RESP(slaves_resp[i], slave[i])
   end
   // -------------------------------
   // AXI Rand Masters and Slaves
@@ -218,7 +220,7 @@ module tb_axi_ace_xbar #(
   end
 
   initial begin : proc_monitor
-    static tb_axi_ace_xbar_pkg::axi_ace_xbar_monitor #(
+    static tb_ace_xbar_pkg::ace_xbar_monitor #(
       .AxiAddrWidth      ( AxiAddrWidth         ),
       .AxiDataWidth      ( AxiDataWidth         ),
       .AxiIdWidthMasters ( AxiIdWidthMasters    ),
@@ -258,7 +260,7 @@ module tb_axi_ace_xbar #(
   //-----------------------------------
   // DUT
   //-----------------------------------
-  axi_ace_xbar_intf #(
+  ace_xbar_intf #(
     .AXI_USER_WIDTH ( AxiUserWidth  ),
     .Cfg            ( xbar_cfg      ),
     .rule_t         ( rule_t        )
@@ -275,7 +277,7 @@ module tb_axi_ace_xbar #(
 
   // logger for master modules
   for (genvar i = 0; i < TbNumMst; i++) begin : gen_master_logger
-    axi_chan_logger #(
+    ace_chan_logger #(
       .TestTime  ( TestTime      ), // Time after clock, where sampling happens
       .LoggerName( $sformatf("axi_logger_master_%0d", i)),
       .snoop_en  (        1      ),
@@ -312,7 +314,7 @@ module tb_axi_ace_xbar #(
   end
   // logger for slave modules
   for (genvar i = 0; i < TbNumSlv; i++) begin : gen_slave_logger
-    axi_chan_logger #(
+    ace_chan_logger #(
       .TestTime  ( TestTime      ), // Time after clock, where sampling happens
       .LoggerName( $sformatf("axi_logger_slave_%0d",i)),
       .snoop_en  (        1      ),

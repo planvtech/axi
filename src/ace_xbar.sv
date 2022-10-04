@@ -1,4 +1,6 @@
 // Copyright (c) 2019 ETH Zurich and University of Bologna.
+// Copyright (c) 2022 PlanV GmbH
+//
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -8,15 +10,8 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 //
-// Authors:
-// - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
-// - Andreas Kurth <akurth@iis.ee.ethz.ch>
-// - Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-// axi_xbar: Fully-connected AXI4+ATOP crossbar with an arbitrary number of slave and master ports.
-// See `doc/axi_xbar.md` for the documentation, including the definition of parameters and ports.
-//`include "convert.sh"
-module axi_ace_xbar
+module ace_xbar
 import cf_math_pkg::idx_width;
 #(
   parameter axi_pkg::xbar_cfg_t Cfg                                   = '0,
@@ -278,10 +273,10 @@ import cf_math_pkg::idx_width;
   // pragma translate_on
 endmodule
 
-`include "axi/assign.svh"
-`include "axi/typedef.svh"
+`include "ace/assign.svh"
+`include "ace/typedef.svh"
 
-module axi_ace_xbar_intf
+module ace_xbar_intf
 import cf_math_pkg::idx_width;
 #(
   parameter int unsigned AXI_USER_WIDTH =  0,
@@ -297,8 +292,8 @@ import cf_math_pkg::idx_width;
   input  logic                                                      clk_i,
   input  logic                                                      rst_ni,
   input  logic                                                      test_i,
-  AXI_ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
-  AXI_ACE_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0],
+  ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
+  ACE_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0],
   input  rule_t [Cfg.NoAddrRules-1:0]                               addr_map_i,
   input  logic  [Cfg.NoSlvPorts-1:0]                                en_default_mst_port_i,
 `ifdef VCS
@@ -318,19 +313,19 @@ import cf_math_pkg::idx_width;
   typedef logic [AXI_USER_WIDTH         -1:0] user_t;
 
     // snoop channel conversion
-  `AXI_ACE_TYPEDEF_AW_CHAN_T(mst_ace_aw_chan_t, addr_t, id_mst_t, user_t)
-  `AXI_ACE_TYPEDEF_AW_CHAN_T(slv_ace_aw_chan_t, addr_t, id_slv_t, user_t)
-  `AXI_ACE_TYPEDEF_AR_CHAN_T(mst_ace_ar_chan_t, addr_t, id_mst_t, user_t)
-  `AXI_ACE_TYPEDEF_AR_CHAN_T(slv_ace_ar_chan_t, addr_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_AW_CHAN_T(mst_ace_aw_chan_t, addr_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_AW_CHAN_T(slv_ace_aw_chan_t, addr_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_AR_CHAN_T(mst_ace_ar_chan_t, addr_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_AR_CHAN_T(slv_ace_ar_chan_t, addr_t, id_slv_t, user_t)
   `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
   `AXI_TYPEDEF_B_CHAN_T(mst_b_chan_t, id_mst_t, user_t)
   `AXI_TYPEDEF_B_CHAN_T(slv_b_chan_t, id_slv_t, user_t)
-  `AXI_ACE_TYPEDEF_R_CHAN_T(mst_ace_r_chan_t, data_t, id_mst_t, user_t)
-  `AXI_ACE_TYPEDEF_R_CHAN_T(slv_ace_r_chan_t, data_t, id_slv_t, user_t)
-  `AXI_ACE_TYPEDEF_REQ_T(mst_ace_req_t, mst_ace_aw_chan_t, w_chan_t, mst_ace_ar_chan_t)
-  `AXI_ACE_TYPEDEF_REQ_T(slv_ace_req_t, slv_ace_aw_chan_t, w_chan_t, slv_ace_ar_chan_t)
-  `AXI_ACE_TYPEDEF_RESP_T(mst_ace_resp_t, mst_b_chan_t, mst_ace_r_chan_t)
-  `AXI_ACE_TYPEDEF_RESP_T(slv_ace_resp_t, slv_b_chan_t, slv_ace_r_chan_t)
+  `ACE_TYPEDEF_R_CHAN_T(mst_ace_r_chan_t, data_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_R_CHAN_T(slv_ace_r_chan_t, data_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_REQ_T(mst_ace_req_t, mst_ace_aw_chan_t, w_chan_t, mst_ace_ar_chan_t)
+  `ACE_TYPEDEF_REQ_T(slv_ace_req_t, slv_ace_aw_chan_t, w_chan_t, slv_ace_ar_chan_t)
+  `ACE_TYPEDEF_RESP_T(mst_ace_resp_t, mst_b_chan_t, mst_ace_r_chan_t)
+  `ACE_TYPEDEF_RESP_T(slv_ace_resp_t, slv_b_chan_t, slv_ace_r_chan_t)
 
 
   mst_ace_req_t   [Cfg.NoMstPorts-1:0]  mst_ace_reqs;
@@ -341,19 +336,19 @@ import cf_math_pkg::idx_width;
 
 
   for (genvar i = 0; i < Cfg.NoMstPorts; i++) begin : gen_assign_mst
-    `AXI_ACE_ASSIGN_FROM_REQ(mst_ports[i], mst_ace_reqs[i])
-    `AXI_ACE_ASSIGN_TO_RESP(mst_ace_resps[i], mst_ports[i])
+    `ACE_ASSIGN_FROM_REQ(mst_ports[i], mst_ace_reqs[i])
+    `ACE_ASSIGN_TO_RESP(mst_ace_resps[i], mst_ports[i])
   end
 
   for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_assign_slv
 
-    `AXI_ACE_ASSIGN_TO_REQ(slv_ace_reqs[i], slv_ports[i])
-    `AXI_ACE_ASSIGN_FROM_RESP(slv_ports[i], slv_ace_resps[i])
+    `ACE_ASSIGN_TO_REQ(slv_ace_reqs[i], slv_ports[i])
+    `ACE_ASSIGN_FROM_RESP(slv_ports[i], slv_ace_resps[i])
 
   end
 
 
-  axi_ace_xbar #(
+  ace_xbar #(
     .Cfg  (Cfg),
     .ATOPs          ( ATOPS         ),
     .Connectivity   ( CONNECTIVITY  ),
