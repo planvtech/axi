@@ -149,8 +149,8 @@ for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_shared_conn
 end  
 
 // Temporary solution it will stuck after few transactions due to ID clashes
-assign ccu_reqs_o     = ccu_reqs_i[0];
-assign ccu_resps_o[0] = ccu_resps_i;
+assign ccu_reqs_o     = ccu_reqs_i[1];
+assign ccu_resps_o[1] = ccu_resps_i;
 
  
 // connect CCU reqs and resps to mux  
