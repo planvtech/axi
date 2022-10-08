@@ -96,8 +96,8 @@ for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_slv_port_demux
       .rst_ni,  // Asynchronous reset active low
       .test_i,  // Testmode enable
       .slv_req_i       ( slv_ports_req_i[i]  ),
-      .slv_aw_select_i ( slv_aw_select       ),
-      .slv_ar_select_i ( slv_ar_select       ),
+      .slv_aw_select_i ( slv_aw_select[i]       ),
+      .slv_ar_select_i ( slv_ar_select[i]       ),
       .slv_resp_o      ( slv_ports_resp_o[i] ),
       .mst_reqs_o      ( slv_reqs[i]         ),
       .mst_resps_i     ( slv_resps[i]        )
@@ -149,12 +149,108 @@ for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_shared_conn
 end  
 
 // Temporary solution it will stuck after few transactions due to ID clashes
-assign ccu_reqs_o     = ccu_reqs_i[1];
-assign ccu_resps_o[1] = ccu_resps_i;
+assign ccu_reqs_o     = ccu_reqs_i[0];
+assign ccu_resps_o[0] = ccu_resps_i;
 
  
 // connect CCU reqs and resps to mux  
 assign mst_reqs[Cfg.NoSlvPorts]     = ccu_reqs_o;
 assign ccu_resps_i                  = mst_resps[Cfg.NoSlvPorts];
   
+endmodule
+
+
+`include "ace/assign.svh"
+`include "ace/typedef.svh"
+
+module ace_ccu_top_intf
+import cf_math_pkg::idx_width;
+#(
+  parameter int unsigned AXI_USER_WIDTH =  0,
+  parameter axi_pkg::xbar_cfg_t Cfg     = '0,
+  parameter bit ATOPS                   = 1'b1,
+  parameter type rule_t                 = axi_pkg::xbar_rule_64_t
+`ifdef VCS
+  , localparam int unsigned MstPortsIdxWidth =
+        (Cfg.NoMstPorts == 32'd1) ? 32'd1 : unsigned'($clog2(Cfg.NoMstPorts))
+`endif
+) (
+  input  logic                                                      clk_i,
+  input  logic                                                      rst_ni,
+  input  logic                                                      test_i,
+  ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
+  ACE_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0]
+);
+
+  localparam int unsigned AxiIdWidthMstPorts = Cfg.AxiIdWidthSlvPorts + $clog2(Cfg.NoSlvPorts);
+
+  typedef logic [AxiIdWidthMstPorts     -1:0] id_mst_t;
+  typedef logic [Cfg.AxiIdWidthSlvPorts -1:0] id_slv_t;
+  typedef logic [Cfg.AxiAddrWidth       -1:0] addr_t;
+  typedef logic [Cfg.AxiDataWidth       -1:0] data_t;
+  typedef logic [Cfg.AxiDataWidth/8     -1:0] strb_t;
+  typedef logic [AXI_USER_WIDTH         -1:0] user_t;
+
+    // snoop channel conversion
+  `ACE_TYPEDEF_AW_CHAN_T(mst_ace_aw_chan_t, addr_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_AW_CHAN_T(slv_ace_aw_chan_t, addr_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_AR_CHAN_T(mst_ace_ar_chan_t, addr_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_AR_CHAN_T(slv_ace_ar_chan_t, addr_t, id_slv_t, user_t)
+  `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
+  `AXI_TYPEDEF_B_CHAN_T(mst_b_chan_t, id_mst_t, user_t)
+  `AXI_TYPEDEF_B_CHAN_T(slv_b_chan_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_R_CHAN_T(mst_ace_r_chan_t, data_t, id_mst_t, user_t)
+  `ACE_TYPEDEF_R_CHAN_T(slv_ace_r_chan_t, data_t, id_slv_t, user_t)
+  `ACE_TYPEDEF_REQ_T(mst_ace_req_t, mst_ace_aw_chan_t, w_chan_t, mst_ace_ar_chan_t)
+  `ACE_TYPEDEF_REQ_T(slv_ace_req_t, slv_ace_aw_chan_t, w_chan_t, slv_ace_ar_chan_t)
+  `ACE_TYPEDEF_RESP_T(mst_ace_resp_t, mst_b_chan_t, mst_ace_r_chan_t)
+  `ACE_TYPEDEF_RESP_T(slv_ace_resp_t, slv_b_chan_t, slv_ace_r_chan_t)
+
+
+  mst_ace_req_t   [Cfg.NoMstPorts-1:0]  mst_ace_reqs;
+  mst_ace_resp_t  [Cfg.NoMstPorts-1:0]  mst_ace_resps;
+  slv_ace_req_t   [Cfg.NoSlvPorts-1:0]  slv_ace_reqs;
+  slv_ace_resp_t  [Cfg.NoSlvPorts-1:0]  slv_ace_resps;
+
+
+
+  for (genvar i = 0; i < Cfg.NoMstPorts; i++) begin : gen_assign_mst
+    `ACE_ASSIGN_FROM_REQ(mst_ports[i], mst_ace_reqs[i])
+    `ACE_ASSIGN_TO_RESP(mst_ace_resps[i], mst_ports[i])
+  end
+
+  for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_assign_slv
+
+    `ACE_ASSIGN_TO_REQ(slv_ace_reqs[i], slv_ports[i])
+    `ACE_ASSIGN_FROM_RESP(slv_ports[i], slv_ace_resps[i])
+
+  end
+
+
+  ace_ccu_top #(
+    .Cfg  (Cfg),
+    .ATOPs          ( ATOPS         ),
+    .slv_aw_chan_t  ( slv_ace_aw_chan_t ),
+    .mst_aw_chan_t  ( mst_ace_aw_chan_t ),
+    .w_chan_t       ( w_chan_t      ),
+    .slv_b_chan_t   ( slv_b_chan_t  ),
+    .mst_b_chan_t   ( mst_b_chan_t  ),
+    .slv_ar_chan_t  ( slv_ace_ar_chan_t ),
+    .mst_ar_chan_t  ( mst_ace_ar_chan_t ),
+    .slv_r_chan_t   ( slv_ace_r_chan_t  ),
+    .mst_r_chan_t   ( mst_ace_r_chan_t  ),
+    .slv_req_t      ( slv_ace_req_t     ),
+    .slv_resp_t     ( slv_ace_resp_t    ),
+    .mst_req_t      ( mst_ace_req_t     ),
+    .mst_resp_t     ( mst_ace_resp_t    )
+  ) i_ccu_top (
+    .clk_i,
+    .rst_ni,
+    .test_i,
+    .slv_ports_req_i  (slv_ace_reqs ),
+    .slv_ports_resp_o (slv_ace_resps),
+    .mst_ports_req_o  (mst_ace_reqs ),
+    .mst_ports_resp_i (mst_ace_resps)
+  );
+
 endmodule
