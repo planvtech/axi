@@ -119,7 +119,7 @@ axi_mux #(
   .slv_resp_t    ( slv_resp_t             ),
   .mst_req_t     ( mst_req_t              ),
   .mst_resp_t    ( mst_resp_t             ),
-  .NoSlvPorts    ( Cfg.NoSlvPorts+1       ), // Number of Masters for the module
+  .NoSlvPorts    ( Cfg.NoSlvPorts + 1     ), // Number of Masters for the modules
   .MaxWTrans     ( Cfg.MaxSlvTrans        ),
   .FallThrough   ( Cfg.FallThrough        ),
   .SpillAw       ( Cfg.LatencyMode[4]     ),
