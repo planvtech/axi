@@ -42,7 +42,7 @@ module tb_ace_ccu_top #(
   // axi configuration
   localparam int unsigned AxiIdWidthMasters =  4;
   localparam int unsigned AxiIdUsed         =  3; // Has to be <= AxiIdWidthMasters
-  localparam int unsigned AxiIdWidthSlaves  =  AxiIdWidthMasters + $clog2(TbNumMst+1);
+  localparam int unsigned AxiIdWidthSlaves  =  AxiIdWidthMasters + $clog2(TbNumMst);
   localparam int unsigned AxiAddrWidth      =  32;    // Axi Address Width
   localparam int unsigned AxiDataWidth      =  64;    // Axi Data Width
   localparam int unsigned AxiStrbWidth      =  AxiDataWidth / 8;
@@ -88,7 +88,7 @@ module tb_ace_ccu_top #(
 
   localparam rule_t [xbar_cfg.NoAddrRules-1:0] AddrMap = '{
 
-    '{idx: 32'd0 % 1, start_addr: 32'h0000_0000, end_addr: 32'h0000_3000}
+    '{idx: 32'd0 % TbNumSlv, start_addr: 32'h0000_0000, end_addr: 32'h0000_3000}
   };
 
   typedef ace_test::ace_rand_master #(
@@ -131,8 +131,8 @@ module tb_ace_ccu_top #(
   mst_resp_t [TbNumMst-1:0] masters_resp;
 
   // slave structs
-  slv_req_t  [0:0] slaves_req;
-  slv_resp_t [0:0] slaves_resp;
+  slv_req_t  [TbNumSlv-1:0] slaves_req;
+  slv_resp_t [TbNumSlv-1:0] slaves_resp;
 
   // -------------------------------
   // AXI Interfaces
@@ -166,20 +166,20 @@ module tb_ace_ccu_top #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-  ) slave [0:0] ();
+  ) slave [TbNumSlv-1:0] ();
   ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-  ) slave_dv [0:0](clk);
+  ) slave_dv [TbNumSlv-1:0](clk);
   ACE_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-  ) slave_monitor_dv [0:0](clk);
-  for (genvar i = 0; i < 1; i++) begin : gen_conn_dv_slaves
+  ) slave_monitor_dv [TbNumSlv-1:0](clk);
+  for (genvar i = 0; i < TbNumSlv; i++) begin : gen_conn_dv_slaves
     `ACE_ASSIGN(slave_dv[i], slave[i])
     `ACE_ASSIGN_TO_REQ(slaves_req[i], slave[i])
     `ACE_ASSIGN_TO_RESP(slaves_resp[i], slave[i])
@@ -204,7 +204,7 @@ module tb_ace_ccu_top #(
   end
 
   axi_rand_slave_t axi_rand_slave [1];
-  for (genvar i = 0; i < 1; i++) begin : gen_rand_slave
+  for (genvar i = 0; i < TbNumSlv; i++) begin : gen_rand_slave
     initial begin
       axi_rand_slave[i] = new( slave_dv[i] );
       axi_rand_slave[i].reset();
@@ -221,7 +221,7 @@ module tb_ace_ccu_top #(
       .AxiIdWidthSlaves  ( AxiIdWidthSlaves     ),
       .AxiUserWidth      ( AxiUserWidth         ),
       .NoMasters         ( TbNumMst            ),
-      .NoSlaves          ( 1             ),
+      .NoSlaves          ( TbNumSlv             ),
       .NoAddrRules       ( xbar_cfg.NoAddrRules ),
       .rule_t            ( rule_t               ),
       .AddrMap           ( AddrMap              ),
@@ -393,7 +393,7 @@ module tb_ace_ccu_top #(
     assign master_monitor_dv[i].r_valid     = master[i].r_valid  ;
     assign master_monitor_dv[i].r_ready     = master[i].r_ready  ;
   end
-  for (genvar i = 0; i < 1; i++) begin : gen_connect_slave_monitor
+  for (genvar i = 0; i < TbNumSlv; i++) begin : gen_connect_slave_monitor
     assign slave_monitor_dv[i].aw_id        = slave[i].aw_id    ;
     assign slave_monitor_dv[i].aw_addr      = slave[i].aw_addr  ;
     assign slave_monitor_dv[i].aw_len       = slave[i].aw_len   ;

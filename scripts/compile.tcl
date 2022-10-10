@@ -364,8 +364,8 @@ if {[catch {vlog -incr -sv \
     +define+TARGET_SIMULATION \
     +define+TARGET_TEST \
     +define+TARGET_VSIM \
-    "+incdir+$ROOT/include" \
     "+incdir+$ROOT/.bender/git/checkouts/common_cells-6cf4f25bc9fd0d82/include" \
+    "+incdir+$ROOT/include" \
     "$ROOT/src/axi_dumper.sv" \
     "$ROOT/src/axi_sim_mem.sv" \
     "$ROOT/src/axi_test.sv" \

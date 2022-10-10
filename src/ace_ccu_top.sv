@@ -150,8 +150,9 @@ end
 
 // Temporary solution it will stuck after few transactions due to ID clashes
 assign ccu_reqs_o     = ccu_reqs_i[0];
-assign ccu_resps_o[0] = ccu_resps_i;
-
+for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_assign_resp
+  assign ccu_resps_o[i] = ccu_resps_i;
+end 
  
 // connect CCU reqs and resps to mux  
 assign mst_reqs[Cfg.NoSlvPorts]     = ccu_reqs_o;
@@ -182,7 +183,7 @@ import cf_math_pkg::idx_width;
   ACE_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0]
 );
 
-  localparam int unsigned AxiIdWidthMstPorts = Cfg.AxiIdWidthSlvPorts + $clog2(Cfg.NoSlvPorts);
+  localparam int unsigned AxiIdWidthMstPorts = Cfg.AxiIdWidthSlvPorts + $clog2(Cfg.NoSlvPorts+1);
 
   typedef logic [AxiIdWidthMstPorts     -1:0] id_mst_t;
   typedef logic [Cfg.AxiIdWidthSlvPorts -1:0] id_slv_t;
