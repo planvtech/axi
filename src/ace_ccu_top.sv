@@ -153,7 +153,7 @@ assign ccu_reqs_o     = ccu_reqs_i[0];
 for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_assign_resp
   assign ccu_resps_o[i] = ccu_resps_i;
 end 
- 
+
 // connect CCU reqs and resps to mux  
 assign mst_reqs[Cfg.NoSlvPorts]     = ccu_reqs_o;
 assign ccu_resps_i                  = mst_resps[Cfg.NoSlvPorts];
