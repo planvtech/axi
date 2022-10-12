@@ -41,7 +41,7 @@
     axi_pkg::region_t   region;                                   \
     axi_pkg::atop_t     atop;                                     \
     user_t              user;                                     \
-    ace_pkg::awsnoop_t  awsnoop;                                  \
+    ace_pkg::awsnoop_t  snoop;                                  \
     ace_pkg::bar_t      bar;                                      \
     ace_pkg::domain_t   domain;                                   \
     ace_pkg::awunique_t awunique;                                 \
@@ -59,7 +59,7 @@
     axi_pkg::qos_t      qos;                                      \
     axi_pkg::region_t   region;                                   \
     user_t              user;                                     \
-    ace_pkg::arsnoop_t  arsnoop;                                  \
+    ace_pkg::arsnoop_t  snoop;                                  \
     ace_pkg::bar_t      bar;                                      \
     ace_pkg::domain_t   domain;                                   \
   } ar_chan_t;

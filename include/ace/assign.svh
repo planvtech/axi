@@ -36,7 +36,7 @@
   __opt_as __lhs``__lhs_sep``region = __rhs``__rhs_sep``region;     \
   __opt_as __lhs``__lhs_sep``atop   = __rhs``__rhs_sep``atop;       \
   __opt_as __lhs``__lhs_sep``user   = __rhs``__rhs_sep``user;       \
-  __opt_as __lhs``__lhs_sep``awsnoop   = __rhs``__rhs_sep``awsnoop; \
+  __opt_as __lhs``__lhs_sep``snoop   = __rhs``__rhs_sep``snoop; \
   __opt_as __lhs``__lhs_sep``bar   = __rhs``__rhs_sep``bar;         \
   __opt_as __lhs``__lhs_sep``domain   = __rhs``__rhs_sep``domain;   \
   __opt_as __lhs``__lhs_sep``awunique   = __rhs``__rhs_sep``awunique;
@@ -54,9 +54,9 @@
   __opt_as __lhs``__lhs_sep``qos    = __rhs``__rhs_sep``qos;        \
   __opt_as __lhs``__lhs_sep``region = __rhs``__rhs_sep``region;     \
   __opt_as __lhs``__lhs_sep``user   = __rhs``__rhs_sep``user;       \
-  __opt_as __lhs``__lhs_sep``arsnoop = __rhs``__rhs_sep``arsnoop;   \
+  __opt_as __lhs``__lhs_sep``snoop = __rhs``__rhs_sep``snoop;   \
   __opt_as __lhs``__lhs_sep``bar = __rhs``__rhs_sep``bar;           \
-  __opt_as __lhs``__lhs_sep``domain = __rhs``__rhs_sep``domain;     
+  __opt_as __lhs``__lhs_sep``domain = __rhs``__rhs_sep``domain;
 `define __ACE_TO_R(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep)    \
   __opt_as __lhs``__lhs_sep``id     = __rhs``__rhs_sep``id;         \
   __opt_as __lhs``__lhs_sep``data   = __rhs``__rhs_sep``data;       \
