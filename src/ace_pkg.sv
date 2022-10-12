@@ -22,6 +22,5 @@ package ace_pkg;
    typedef logic [1:0] domain_t;
    typedef logic [0:0] awunique_t;
    typedef logic [3:0] rresp_t;
-   typedef logic       snoop_trs_t;
 
 endpackage
