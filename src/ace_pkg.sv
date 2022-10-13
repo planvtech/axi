@@ -15,7 +15,16 @@
 /// Contains all necessary type definitions, constants, and generally useful functions.
 package ace_pkg;
 
-   /// Support for snoop channels
+   // CRRESP
+   typedef struct packed {
+      logic       wasUnique;
+      logic       isShared;
+      logic       passDirty;
+      logic       error;
+      logic       dataTransfer;
+   } crresp_t;
+
+   // Support for snoop channels
    typedef logic [3:0] arsnoop_t;
    typedef logic [2:0] awsnoop_t;
    typedef logic [1:0] bar_t;
@@ -25,5 +34,17 @@ package ace_pkg;
    typedef logic [3:0] acsnoop_t;
    typedef logic [2:0] acprot_t;
    typedef logic [4:0] crresp_t;
+
+   // AC snoop encoding
+   localparam READ_ONCE = 4'b0000;
+   localparam READ_SHARED = 4'b0001;
+   localparam READ_CLEAN = 4'b0010;
+   localparam READ_NOT_SHARED_DIRTY = 4'b0011;
+   localparam READ_UNIQUE = 4'b0111;
+   localparam CLEAN_SHARED = 4'b1000;
+   localparam CLEAN_UNIQUE = 4'b1001;
+   localparam MAKE_INVALID = 4'b1101;
+   localparam DVM_COMPLETE = 4'b1110;
+   localparam DVM_MESSAGE = 4'b1111;
 
 endpackage
