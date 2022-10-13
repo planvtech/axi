@@ -47,14 +47,14 @@ module tb_ace_ccu_top #(
   localparam int unsigned AxiDataWidth      =  64;    // Axi Data Width
   localparam int unsigned AxiStrbWidth      =  AxiDataWidth / 8;
   localparam int unsigned AxiUserWidth      =  5;
+
   // in the bench can change this variables which are set here freely
-  localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
+  localparam ace_pkg::ccu_cfg_t ccu_cfg = '{
     NoSlvPorts:         TbNumMst,
-    NoMstPorts:         1,
     MaxMstTrans:        10,
     MaxSlvTrans:        6,
     FallThrough:        1'b0,
-    LatencyMode:        axi_pkg::CUT_ALL_AX,
+    LatencyMode:        ace_pkg::CUT_ALL_AX,
     AxiIdWidthSlvPorts: AxiIdWidthMasters,
     AxiIdUsedSlvPorts:  AxiIdUsed,
     UniqueIds:          TbUniqueIds,
@@ -62,6 +62,8 @@ module tb_ace_ccu_top #(
     AxiDataWidth:       AxiDataWidth,
     NoAddrRules:        8
   };
+
+
   typedef logic [AxiIdWidthMasters-1:0] id_mst_t;
   typedef logic [AxiIdWidthSlaves-1:0]  id_slv_t;
   typedef logic [AxiAddrWidth-1:0]      addr_t;
@@ -86,7 +88,7 @@ module tb_ace_ccu_top #(
   `AXI_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
   `AXI_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
 
-  localparam rule_t [xbar_cfg.NoAddrRules-1:0] AddrMap = '{
+  localparam rule_t [ccu_cfg.NoAddrRules-1:0] AddrMap = '{
 
     '{idx: 32'd0 % TbNumSlv, start_addr: 32'h0000_0000, end_addr: 32'h0000_3000}
   };
@@ -194,7 +196,7 @@ module tb_ace_ccu_top #(
       ace_rand_master[i] = new( master_dv[i] );
       end_of_sim[i] <= 1'b0;
       ace_rand_master[i].add_memory_region(AddrMap[0].start_addr,
-                                      AddrMap[xbar_cfg.NoAddrRules-1].end_addr,
+                                      AddrMap[ccu_cfg.NoAddrRules-1].end_addr,
                                       axi_pkg::DEVICE_NONBUFFERABLE);
       ace_rand_master[i].reset();
       @(posedge rst_n);
@@ -222,7 +224,7 @@ module tb_ace_ccu_top #(
       .AxiUserWidth      ( AxiUserWidth         ),
       .NoMasters         ( TbNumMst            ),
       .NoSlaves          ( TbNumSlv             ),
-      .NoAddrRules       ( xbar_cfg.NoAddrRules ),
+      .NoAddrRules       ( ccu_cfg.NoAddrRules ),
       .rule_t            ( rule_t               ),
       .AddrMap           ( AddrMap              ),
       .TimeTest          ( TestTime             )
@@ -256,7 +258,7 @@ module tb_ace_ccu_top #(
   //-----------------------------------
   ace_ccu_top_intf #(
     .AXI_USER_WIDTH ( AxiUserWidth  ),
-    .Cfg            ( xbar_cfg      )
+    .Cfg            ( ccu_cfg      )
   ) i_ccu_dut (
     .clk_i                  ( clk     ),
     .rst_ni                 ( rst_n   ),

@@ -15,7 +15,7 @@
 module ace_ccu_top
 import cf_math_pkg::idx_width;
 #(
-  parameter axi_pkg::xbar_cfg_t Cfg                                   = '0,
+  parameter ace_pkg::ccu_cfg_t Cfg                                   = '0,
   parameter bit  ATOPs                                                = 1'b1,
   parameter type slv_aw_chan_t                                        = logic,
   parameter type mst_aw_chan_t                                        = logic,
@@ -168,13 +168,8 @@ module ace_ccu_top_intf
 import cf_math_pkg::idx_width;
 #(
   parameter int unsigned AXI_USER_WIDTH =  0,
-  parameter axi_pkg::xbar_cfg_t Cfg     = '0,
-  parameter bit ATOPS                   = 1'b1,
-  parameter type rule_t                 = axi_pkg::xbar_rule_64_t
-`ifdef VCS
-  , localparam int unsigned MstPortsIdxWidth =
-        (Cfg.NoMstPorts == 32'd1) ? 32'd1 : unsigned'($clog2(Cfg.NoMstPorts))
-`endif
+  parameter ace_pkg::ccu_cfg_t Cfg     = '0,
+  parameter bit ATOPS                   = 1'b1
 ) (
   input  logic                                                      clk_i,
   input  logic                                                      rst_ni,
@@ -219,7 +214,7 @@ import cf_math_pkg::idx_width;
   `AXI_ASSIGN_FROM_REQ(mst_ports, mst_ace_reqs)
   /// Assigning AXI response from slave (RAM ) to CCU mux which accepts only ACE type response
   `ACE_ASSIGN_TO_RESP(mst_ace_resps, mst_ports)
-  assign mst_ace_resps.r.resp[3:2] = 'b11; // tie remianing bits of resp[[3:0] to 0 
+   
   
 
   for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_assign_slv
