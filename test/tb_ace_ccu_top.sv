@@ -71,20 +71,20 @@ module tb_ace_ccu_top #(
   typedef logic [AxiUserWidth-1:0]      user_t;
 
   `ACE_TYPEDEF_AW_CHAN_T(aw_chan_mst_t, addr_t, id_mst_t, user_t)
-  `ACE_TYPEDEF_AW_CHAN_T(aw_chan_slv_t, addr_t, id_slv_t, user_t)
+  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_slv_t, addr_t, id_slv_t, user_t)
   `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
   `AXI_TYPEDEF_B_CHAN_T(b_chan_mst_t, id_mst_t, user_t)
   `AXI_TYPEDEF_B_CHAN_T(b_chan_slv_t, id_slv_t, user_t)
 
   `ACE_TYPEDEF_AR_CHAN_T(ar_chan_mst_t, addr_t, id_mst_t, user_t)
-  `ACE_TYPEDEF_AR_CHAN_T(ar_chan_slv_t, addr_t, id_slv_t, user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(ar_chan_slv_t, addr_t, id_slv_t, user_t)
   `ACE_TYPEDEF_R_CHAN_T(r_chan_mst_t, data_t, id_mst_t, user_t)
-  `ACE_TYPEDEF_R_CHAN_T(r_chan_slv_t, data_t, id_slv_t, user_t)
+  `AXI_TYPEDEF_R_CHAN_T(r_chan_slv_t, data_t, id_slv_t, user_t)
 
   `ACE_TYPEDEF_REQ_T(mst_req_t, aw_chan_mst_t, w_chan_t, ar_chan_mst_t)
   `ACE_TYPEDEF_RESP_T(mst_resp_t, b_chan_mst_t, r_chan_mst_t)
-  `ACE_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
-  `ACE_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
+  `AXI_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
+  `AXI_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
 
   localparam rule_t [xbar_cfg.NoAddrRules-1:0] AddrMap = '{
 
@@ -106,8 +106,8 @@ module tb_ace_ccu_top #(
     .AXI_EXCLS      ( TbEnExcl ),
     .AXI_ATOPS      ( TbEnAtop ),
     .UNIQUE_IDS     ( TbUniqueIds )
-  ) axi_rand_master_t;
-  typedef ace_test::ace_rand_slave #(
+  ) ace_rand_master_t;
+  typedef axi_test::axi_rand_slave #(
     // AXI interface parameters
     .AW ( AxiAddrWidth     ),
     .DW ( AxiDataWidth     ),
@@ -161,44 +161,44 @@ module tb_ace_ccu_top #(
     `ACE_ASSIGN_TO_RESP(masters_resp[i], master[i])
   end
 
-  ACE_BUS #(
+  AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
   ) slave [TbNumSlv-1:0] ();
-  ACE_BUS_DV #(
+  AXI_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
   ) slave_dv [TbNumSlv-1:0](clk);
-  ACE_BUS_DV #(
+  AXI_BUS_DV #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
   ) slave_monitor_dv [TbNumSlv-1:0](clk);
   for (genvar i = 0; i < TbNumSlv; i++) begin : gen_conn_dv_slaves
-    `ACE_ASSIGN(slave_dv[i], slave[i])
-    `ACE_ASSIGN_TO_REQ(slaves_req[i], slave[i])
-    `ACE_ASSIGN_TO_RESP(slaves_resp[i], slave[i])
+    `AXI_ASSIGN(slave_dv[i], slave[i])
+    `AXI_ASSIGN_TO_REQ(slaves_req[i], slave[i])
+    `AXI_ASSIGN_TO_RESP(slaves_resp[i], slave[i])
   end
   // -------------------------------
   // AXI Rand Masters and Slaves
   // -------------------------------
   // Masters control simulation run time
-  axi_rand_master_t axi_rand_master [TbNumMst];
+  ace_rand_master_t ace_rand_master [TbNumMst];
   for (genvar i = 0; i < TbNumMst; i++) begin : gen_rand_master
     initial begin
-      axi_rand_master[i] = new( master_dv[i] );
+      ace_rand_master[i] = new( master_dv[i] );
       end_of_sim[i] <= 1'b0;
-      axi_rand_master[i].add_memory_region(AddrMap[0].start_addr,
+      ace_rand_master[i].add_memory_region(AddrMap[0].start_addr,
                                       AddrMap[xbar_cfg.NoAddrRules-1].end_addr,
                                       axi_pkg::DEVICE_NONBUFFERABLE);
-      axi_rand_master[i].reset();
+      ace_rand_master[i].reset();
       @(posedge rst_n);
-      axi_rand_master[i].run(NoReads, NoWrites);
+      ace_rand_master[i].run(NoReads, NoWrites);
       end_of_sim[i] <= 1'b1;
     end
   end
@@ -214,7 +214,7 @@ module tb_ace_ccu_top #(
   end
 
   initial begin : proc_monitor
-    static tb_ace_xbar_pkg::ace_xbar_monitor #(
+    static tb_ace_ccu_pkg::ace_ccu_monitor #(
       .AxiAddrWidth      ( AxiAddrWidth         ),
       .AxiDataWidth      ( AxiDataWidth         ),
       .AxiIdWidthMasters ( AxiIdWidthMasters    ),
@@ -262,7 +262,7 @@ module tb_ace_ccu_top #(
     .rst_ni                 ( rst_n   ),
     .test_i                 ( 1'b0    ),
     .slv_ports              ( master  ),
-    .mst_ports              ( slave   )
+    .mst_ports              ( slave[0]   )
   );
 
   // logger for master modules
@@ -303,7 +303,7 @@ module tb_ace_ccu_top #(
   end
   // logger for slave modules
   for (genvar i = 0; i < 1; i++) begin : gen_slave_logger
-    ace_chan_logger #(
+    axi_chan_logger #(
       .TestTime  ( TestTime      ), // Time after clock, where sampling happens
       .LoggerName( $sformatf("axi_logger_slave_%0d",i)),
       .aw_chan_t ( aw_chan_slv_t ), // axi AW type
@@ -408,10 +408,6 @@ module tb_ace_ccu_top #(
     assign slave_monitor_dv[i].aw_user      = slave[i].aw_user  ;
     assign slave_monitor_dv[i].aw_valid     = slave[i].aw_valid ;
     assign slave_monitor_dv[i].aw_ready     = slave[i].aw_ready ;
-    assign slave_monitor_dv[i].aw_awsnoop   = slave[i].aw_awsnoop ;
-    assign slave_monitor_dv[i].aw_bar       = slave[i].aw_bar ;
-    assign slave_monitor_dv[i].aw_domain    = slave[i].aw_domain ;
-    assign slave_monitor_dv[i].aw_awunique  = slave[i].aw_awunique ;
     assign slave_monitor_dv[i].w_data       = slave[i].w_data   ;
     assign slave_monitor_dv[i].w_strb       = slave[i].w_strb   ;
     assign slave_monitor_dv[i].w_last       = slave[i].w_last   ;
@@ -436,9 +432,6 @@ module tb_ace_ccu_top #(
     assign slave_monitor_dv[i].ar_user      = slave[i].ar_user  ;
     assign slave_monitor_dv[i].ar_valid     = slave[i].ar_valid ;
     assign slave_monitor_dv[i].ar_ready     = slave[i].ar_ready ;
-    assign slave_monitor_dv[i].ar_arsnoop   = slave[i].ar_arsnoop ;
-    assign slave_monitor_dv[i].ar_bar       = slave[i].ar_bar ;
-    assign slave_monitor_dv[i].ar_domain    = slave[i].ar_domain ;
     assign slave_monitor_dv[i].r_id         = slave[i].r_id     ;
     assign slave_monitor_dv[i].r_data       = slave[i].r_data   ;
     assign slave_monitor_dv[i].r_resp       = slave[i].r_resp   ;

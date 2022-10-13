@@ -56,7 +56,7 @@ slv_resp_t                             ccu_resps_i;
 
 
 // selection lines for mux and demuxes
-ace_pkg::snoop_trs_t [Cfg.NoSlvPorts-1:0]    slv_aw_select, slv_ar_select;
+logic [Cfg.NoSlvPorts-1:0]    slv_aw_select, slv_ar_select;
 
 
 for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_slv_port_demux
@@ -180,7 +180,7 @@ import cf_math_pkg::idx_width;
   input  logic                                                      rst_ni,
   input  logic                                                      test_i,
   ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
-  ACE_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0]
+  AXI_BUS.Master                                                    mst_ports 
 );
 
   localparam int unsigned AxiIdWidthMstPorts = Cfg.AxiIdWidthSlvPorts + $clog2(Cfg.NoSlvPorts+1);
@@ -208,17 +208,19 @@ import cf_math_pkg::idx_width;
   `ACE_TYPEDEF_RESP_T(slv_ace_resp_t, slv_b_chan_t, slv_ace_r_chan_t)
 
 
-  mst_ace_req_t   [Cfg.NoMstPorts-1:0]  mst_ace_reqs;
-  mst_ace_resp_t  [Cfg.NoMstPorts-1:0]  mst_ace_resps;
+  mst_ace_req_t                         mst_ace_reqs;
+  mst_ace_resp_t                        mst_ace_resps;
   slv_ace_req_t   [Cfg.NoSlvPorts-1:0]  slv_ace_reqs;
   slv_ace_resp_t  [Cfg.NoSlvPorts-1:0]  slv_ace_resps;
 
 
 
-  for (genvar i = 0; i < Cfg.NoMstPorts; i++) begin : gen_assign_mst
-    `ACE_ASSIGN_FROM_REQ(mst_ports[i], mst_ace_reqs[i])
-    `ACE_ASSIGN_TO_RESP(mst_ace_resps[i], mst_ports[i])
-  end
+  /// Assigning ACE request from CCU Mux to slave(RAM )  
+  `AXI_ASSIGN_FROM_REQ(mst_ports, mst_ace_reqs)
+  /// Assigning AXI response from slave (RAM ) to CCU mux which accepts only ACE type response
+  `ACE_ASSIGN_TO_RESP(mst_ace_resps, mst_ports)
+  assign mst_ace_resps.r.resp[3:2] = 'b11; // tie remianing bits of resp[[3:0] to 0 
+  
 
   for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_assign_slv
 
