@@ -292,7 +292,7 @@ import cf_math_pkg::idx_width;
   input  logic                                                      rst_ni,
   input  logic                                                      test_i,
   ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
-  AXI_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0],
+  ACE_BUS.Master                                                    mst_ports [Cfg.NoMstPorts-1:0],
   input  rule_t [Cfg.NoAddrRules-1:0]                               addr_map_i,
   input  logic  [Cfg.NoSlvPorts-1:0]                                en_default_mst_port_i,
 `ifdef VCS
@@ -335,7 +335,7 @@ import cf_math_pkg::idx_width;
 
 
   for (genvar i = 0; i < Cfg.NoMstPorts; i++) begin : gen_assign_mst
-    `AXI_ASSIGN_FROM_REQ(mst_ports[i], mst_ace_reqs[i])
+    `ACE_ASSIGN_FROM_REQ(mst_ports[i], mst_ace_reqs[i])
     `ACE_ASSIGN_TO_RESP(mst_ace_resps[i], mst_ports[i])
   end
 
