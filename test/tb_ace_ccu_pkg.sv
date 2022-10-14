@@ -115,7 +115,7 @@ package tb_ace_ccu_pkg;
         .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
         .AXI_USER_WIDTH ( AxiUserWidth      )
       ) axi_slaves_vif [NoSlaves-1:0]
-    );
+     );
       begin
         this.masters_axi     = axi_masters_vif;
         this.slaves_axi      = axi_slaves_vif;
