@@ -23,7 +23,6 @@ package ace_pkg;
    typedef logic [0:0] awunique_t;
    typedef logic [3:0] rresp_t;
 
-
   /// Slice on Demux AW channel.
   localparam logic [9:0] DemuxAw = (1 << 9);
   /// Slice on Demux W channel.
@@ -68,6 +67,5 @@ package ace_pkg;
     int unsigned   AxiAddrWidth;
     int unsigned   AxiDataWidth;
   } ccu_cfg_t;
-
 
 endpackage

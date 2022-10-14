@@ -66,7 +66,6 @@ module tb_ace_ccu_top #(
   typedef logic [AxiIdWidthMasters-1:0] id_mst_t;
   typedef logic [AxiIdWidthSlaves-1:0]  id_slv_t;
   typedef logic [AxiAddrWidth-1:0]      addr_t;
-  typedef axi_pkg::xbar_rule_32_t       rule_t; // Has to be the same width as axi addr
   typedef logic [AxiDataWidth-1:0]      data_t;
   typedef logic [AxiStrbWidth-1:0]      strb_t;
   typedef logic [AxiUserWidth-1:0]      user_t;
