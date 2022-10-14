@@ -75,11 +75,13 @@ sources:
   - src/axi_to_mem_banked.sv
   - src/axi_to_mem_interleaved.sv
   - src/axi_to_mem_split.sv
+  - src/ace_trs_dec.sv
   # Level 4
   - src/axi_iw_converter.sv
   - src/axi_lite_xbar.sv
   - src/axi_xbar.sv
   - src/ace_xbar.sv
+  - src/ace_ccu_top.sv
   # Level 5
   - src/axi_xp.sv
 
@@ -126,3 +128,4 @@ sources:
       - test/tb_axi_to_mem_banked.sv
       - test/tb_axi_xbar.sv
       - test/tb_ace_xbar.sv
+      - test/tb_ace_ccu_top.sv
