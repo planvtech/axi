@@ -67,7 +67,6 @@ package ace_pkg;
     bit            UniqueIds;
     int unsigned   AxiAddrWidth;
     int unsigned   AxiDataWidth;
-    int unsigned   NoAddrRules;
   } ccu_cfg_t;
 
 

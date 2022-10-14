@@ -25,9 +25,6 @@ package tb_ace_ccu_pkg;
     parameter int unsigned AxiUserWidth,
     parameter int unsigned NoMasters,
     parameter int unsigned NoSlaves,
-    parameter int unsigned NoAddrRules,
-    parameter type         rule_t,
-    parameter rule_t [NoAddrRules-1:0] AddrMap,
       // Stimuli application and test time
     parameter time  TimeTest
   );
@@ -160,30 +157,18 @@ package tb_ace_ccu_pkg;
       master_exp_t exp_b;
 
       if (masters_axi[i].aw_valid && masters_axi[i].aw_ready) begin
-        // check if it should go to a decerror
-        decerr = 1'b1;
-        for (int unsigned j = 0; j < NoAddrRules; j++) begin
-          if ((masters_axi[i].aw_addr >= AddrMap[j].start_addr) &&
-              (masters_axi[i].aw_addr < AddrMap[j].end_addr)) begin
-            to_slave_idx = idx_slv_t'(AddrMap[j].idx);
-            decerr = 1'b0;
-          end
-        end
+        to_slave_idx = '0;
+        decerr = 1'b0;
         // send the exp aw beat down into the queue of the slave when no decerror
-        if (!decerr) begin
-          exp_aw_id = {idx_mst_t'(i), masters_axi[i].aw_id};
-          // $display("Test exp aw_id: %b",exp_aw_id);
-          exp_aw = '{slv_axi_id:   exp_aw_id,
-                     slv_axi_addr: masters_axi[i].aw_addr,
-                     slv_axi_len:  masters_axi[i].aw_len   };
-          this.exp_aw_queue[to_slave_idx].push(exp_aw_id, exp_aw);
-          incr_expected_tests(3);
-          $display("%0tns > Master %0d: AW to Slave %0d: Axi ID: %b",
-              $time, i, to_slave_idx, masters_axi[i].aw_id);
-        end else begin
-          $display("%0tns > Master %0d: AW to Decerror: Axi ID: %b",
-              $time, i, to_slave_idx, masters_axi[i].aw_id);
-        end
+        exp_aw_id = {idx_mst_t'(i), masters_axi[i].aw_id};
+        // $display("Test exp aw_id: %b",exp_aw_id);
+        exp_aw = '{slv_axi_id:   exp_aw_id,
+                   slv_axi_addr: masters_axi[i].aw_addr,
+                   slv_axi_len:  masters_axi[i].aw_len   };
+        this.exp_aw_queue[to_slave_idx].push(exp_aw_id, exp_aw);
+        incr_expected_tests(3);
+        $display("%0tns > Master %0d: AW to Slave %0d: Axi ID: %b",
+            $time, i, to_slave_idx, masters_axi[i].aw_id);
         // populate the expected b queue anyway
         exp_b = '{mst_axi_id: masters_axi[i].aw_id, last: 1'b1};
         this.exp_b_queue[i].push(masters_axi[i].aw_id, exp_b);
@@ -317,30 +302,20 @@ package tb_ace_ccu_pkg;
         mst_axi_addr   = masters_axi[i].ar_addr;
         mst_axi_len    = masters_axi[i].ar_len;
         exp_slv_axi_id = {idx_mst_t'(i), mst_axi_id};
-        exp_slv_idx    = '0;
-        for (int unsigned j = 0; j < NoAddrRules; j++) begin
-          if ((mst_axi_addr >= AddrMap[j].start_addr) && (mst_axi_addr < AddrMap[j].end_addr)) begin
-            exp_slv_idx = AddrMap[j].idx;
-            exp_decerr  = 1'b0;
-          end
-        end
-        if (exp_decerr) begin
-          $display("%0tns > Master %0d: AR to Decerror: Axi ID: %b",
-              $time, i, mst_axi_id);
-        end else begin
-          $display("%0tns > Master %0d: AR to Slave %0d: Axi ID: %b",
-              $time, i, exp_slv_idx, mst_axi_id);
-          // push the expected vectors AW for exp_slv
-          exp_slv_ar = '{slv_axi_id:    exp_slv_axi_id,
-                         slv_axi_addr:  mst_axi_addr,
-                         slv_axi_len:   mst_axi_len     };
-          //$display("Expected Slv Axi Id is: %b", exp_slv_axi_id);
-          this.exp_ar_queue[exp_slv_idx].push(exp_slv_axi_id, exp_slv_ar);
-          incr_expected_tests(1);
-        end
+        exp_slv_idx = '0;
+        exp_decerr  = 1'b0;
+        $display("%0tns > Master %0d: AR to Slave %0d: Axi ID: %b",
+            $time, i, exp_slv_idx, mst_axi_id);
+        // push the expected vectors AW for exp_slv
+        exp_slv_ar = '{slv_axi_id:    exp_slv_axi_id,
+                       slv_axi_addr:  mst_axi_addr,
+                       slv_axi_len:   mst_axi_len     };
+        //$display("Expected Slv Axi Id is: %b", exp_slv_axi_id);
+        this.exp_ar_queue[exp_slv_idx].push(exp_slv_axi_id, exp_slv_ar);
+        incr_expected_tests(1);
         // push the required r beats into the right fifo
-          $display("        Expect R response, len: %0d.", masters_axi[i].ar_len);
-          for (int unsigned j = 0; j <= mst_axi_len; j++) begin
+        $display("        Expect R response, len: %0d.", masters_axi[i].ar_len);
+        for (int unsigned j = 0; j <= mst_axi_len; j++) begin
           exp_mst_r = (j == mst_axi_len) ? '{mst_axi_id: mst_axi_id, last: 1'b1} :
                                            '{mst_axi_id: mst_axi_id, last: 1'b0};
           this.exp_r_queue[i].push(mst_axi_id, exp_mst_r);

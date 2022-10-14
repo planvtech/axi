@@ -59,8 +59,7 @@ module tb_ace_ccu_top #(
     AxiIdUsedSlvPorts:  AxiIdUsed,
     UniqueIds:          TbUniqueIds,
     AxiAddrWidth:       AxiAddrWidth,
-    AxiDataWidth:       AxiDataWidth,
-    NoAddrRules:        8
+    AxiDataWidth:       AxiDataWidth
   };
 
 
@@ -87,11 +86,6 @@ module tb_ace_ccu_top #(
   `ACE_TYPEDEF_RESP_T(mst_resp_t, b_chan_mst_t, r_chan_mst_t)
   `AXI_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
   `AXI_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
-
-  localparam rule_t [ccu_cfg.NoAddrRules-1:0] AddrMap = '{
-
-    '{idx: 32'd0 % TbNumSlv, start_addr: 32'h0000_0000, end_addr: 32'h0000_3000}
-  };
 
   typedef ace_test::ace_rand_master #(
     // AXI interface parameters
@@ -195,8 +189,7 @@ module tb_ace_ccu_top #(
     initial begin
       ace_rand_master[i] = new( master_dv[i] );
       end_of_sim[i] <= 1'b0;
-      ace_rand_master[i].add_memory_region(AddrMap[0].start_addr,
-                                      AddrMap[ccu_cfg.NoAddrRules-1].end_addr,
+      ace_rand_master[i].add_memory_region(32'h0000_0000, 32'h0000_3000,
                                       axi_pkg::DEVICE_NONBUFFERABLE);
       ace_rand_master[i].reset();
       @(posedge rst_n);
@@ -224,9 +217,6 @@ module tb_ace_ccu_top #(
       .AxiUserWidth      ( AxiUserWidth         ),
       .NoMasters         ( TbNumMst            ),
       .NoSlaves          ( TbNumSlv             ),
-      .NoAddrRules       ( ccu_cfg.NoAddrRules ),
-      .rule_t            ( rule_t               ),
-      .AddrMap           ( AddrMap              ),
       .TimeTest          ( TestTime             )
     ) monitor = new( master_monitor_dv, slave_monitor_dv );
     fork
