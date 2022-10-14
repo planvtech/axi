@@ -16,7 +16,7 @@ module ace_trs_dec
 #(
   parameter type slv_ace_req_t = logic
 ) (
-  // incoming request from master  
+  // incoming request from master
   input     slv_ace_req_t   slv_reqs_i,
   // Write transaction shareable
   output    logic           snoop_aw_trs,
@@ -27,20 +27,20 @@ module ace_trs_dec
 /// Types of transactions bypassing CCU
 logic write_back, write_no_snoop, read_no_snoop;
 
-assign write_back     =   (slv_reqs_i.aw.awsnoop == 'b011) && (slv_reqs_i.aw.bar[0] == 'b0) &&  
+assign write_back     =   (slv_reqs_i.aw.snoop == 'b011) && (slv_reqs_i.aw.bar[0] == 'b0) &&
                           ((slv_reqs_i.aw.domain == 'b00) || (slv_reqs_i.aw.domain == 'b01) ||
-                          (slv_reqs_i.aw.domain == 'b10));  
+                          (slv_reqs_i.aw.domain == 'b10));
 
-assign write_no_snoop =   (slv_reqs_i.aw.awsnoop == 'b000) && (slv_reqs_i.aw.bar[0] == 'b0) && 
-                        ((slv_reqs_i.aw.domain == 'b00) || (slv_reqs_i.aw.domain == 'b11) );   
-assign read_no_snoop  =    (slv_reqs_i.ar.arsnoop == 'b0000) && (slv_reqs_i.ar.bar[0] =='b0) && 
-                        ((slv_reqs_i.ar.domain == 'b00) || (slv_reqs_i.ar.domain == 'b11) );                                            
+assign write_no_snoop =   (slv_reqs_i.aw.snoop == 'b000) && (slv_reqs_i.aw.bar[0] == 'b0) &&
+                        ((slv_reqs_i.aw.domain == 'b00) || (slv_reqs_i.aw.domain == 'b11) );
+assign read_no_snoop  =    (slv_reqs_i.ar.snoop == 'b0000) && (slv_reqs_i.ar.bar[0] =='b0) &&
+                        ((slv_reqs_i.ar.domain == 'b00) || (slv_reqs_i.ar.domain == 'b11) );
 
 
-assign snoop_aw_trs = ~(write_back | write_no_snoop); 
+assign snoop_aw_trs = ~(write_back | write_no_snoop);
 assign snoop_ar_trs = ~(read_no_snoop);
 
-//assign snoop_aw_trs = 0; 
+//assign snoop_aw_trs = 0;
 //assign snoop_ar_trs = 0;
 
 
