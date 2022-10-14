@@ -33,7 +33,6 @@ package ace_pkg;
    typedef logic [3:0] rresp_t;
    typedef logic [3:0] acsnoop_t;
    typedef logic [2:0] acprot_t;
-   typedef logic [4:0] crresp_t;
 
    // AC snoop encoding
    localparam READ_ONCE = 4'b0000;
