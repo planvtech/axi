@@ -37,11 +37,11 @@ assign read_no_snoop  =    (slv_reqs_i.ar.arsnoop == 'b0000) && (slv_reqs_i.ar.b
                         ((slv_reqs_i.ar.domain == 'b00) || (slv_reqs_i.ar.domain == 'b11) );                                            
 
 
-//assign snoop_aw_trs = ~(write_back | write_no_snoop); 
-//assign snoop_ar_trs = ~(read_no_snoop);
+assign snoop_aw_trs = ~(write_back | write_no_snoop); 
+assign snoop_ar_trs = ~(read_no_snoop);
 
-assign snoop_aw_trs = 0; 
-assign snoop_ar_trs = 0;
+//assign snoop_aw_trs = 0; 
+//assign snoop_ar_trs = 0;
 
 
 endmodule
