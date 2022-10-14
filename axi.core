@@ -12,8 +12,10 @@ filesets:
       # levels 1 and 0, etc. Files within a level are ordered alphabetically.
       # Level 0
       - src/axi_pkg.sv
+      - src/ace_pkg.sv
       # Level 1
       - src/axi_intf.sv
+      - src/ace_intf.sv
       # Level 2
       - src/axi_atop_filter.sv
       - src/axi_burst_splitter.sv
@@ -55,14 +57,18 @@ filesets:
       - src/axi_to_mem_banked.sv
       - src/axi_to_mem_interleaved.sv
       - src/axi_to_mem_split.sv
+      - src/ace_trs_dec.sv
       # Level 4
       - src/axi_iw_converter.sv
       - src/axi_lite_xbar.sv
       - src/axi_xbar.sv
+      - src/ace_xbar.sv
+      - src/ace_ccu_top.sv
       - src/axi_chan_compare.sv
       - src/axi_dumper.sv
       - src/axi_sim_mem.sv
       - src/axi_test.sv
+      - src/ace_test.sv
       # Level 5
       - src/axi_xp.sv
     file_type : systemVerilogSource
@@ -72,6 +78,8 @@ filesets:
     files:
       - test/tb_axi_dw_pkg.sv
       - test/tb_axi_xbar_pkg.sv
+      - test/tb_ace_xbar_pkg.sv
+      - test/tb_ace_ccu_pkg.sv
       - test/axi_synth_bench.sv
       - test/tb_axi_addr_test.sv
       - test/tb_axi_atop_filter.sv
@@ -95,6 +103,8 @@ filesets:
       - test/tb_axi_to_axi_lite.sv
       - test/tb_axi_to_mem_banked.sv
       - test/tb_axi_xbar.sv
+      - test/tb_ace_xbar.sv
+      - test/tb_ace_ccu_top.sv
     file_type : systemVerilogSource
     depend :
       - ">=pulp-platform.org::common_verification:0.2.3"
