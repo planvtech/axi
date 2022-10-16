@@ -23,6 +23,8 @@
 
 `include "ace/typedef.svh"
 `include "ace/assign.svh"
+`include "snoop/typedef.svh"
+`include "snoop/assign.svh"
 
 module tb_ace_ccu_top #(
   parameter bit TbEnAtop = 1'b1,            // enable atomic operations (ATOPs)
@@ -179,6 +181,13 @@ module tb_ace_ccu_top #(
     `AXI_ASSIGN_TO_REQ(slaves_req[i], slave[i])
     `AXI_ASSIGN_TO_RESP(slaves_resp[i], slave[i])
   end
+
+  SNOOP_BUS #(
+    .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
+    .AXI_DATA_WIDTH ( AxiDataWidth      )
+  ) snp [TbNumMst-1:0] ();
+
+
   // -------------------------------
   // AXI Rand Masters and Slaves
   // -------------------------------
@@ -252,6 +261,7 @@ module tb_ace_ccu_top #(
     .clk_i                  ( clk     ),
     .rst_ni                 ( rst_n   ),
     .test_i                 ( 1'b0    ),
+    .snoop_ports            ( SNOOP   ),
     .slv_ports              ( master  ),
     .mst_ports              ( slave[0]   )
   );

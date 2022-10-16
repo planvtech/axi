@@ -163,17 +163,20 @@ endmodule
 
 `include "ace/assign.svh"
 `include "ace/typedef.svh"
+`include "snoop/assign.svh"
+`include "snoop/typedef.svh"
 
 module ace_ccu_top_intf
 import cf_math_pkg::idx_width;
 #(
   parameter int unsigned AXI_USER_WIDTH =  0,
-  parameter ace_pkg::ccu_cfg_t Cfg     = '0,
+  parameter ace_pkg::ccu_cfg_t Cfg      = '0,
   parameter bit ATOPS                   = 1'b1
 ) (
   input  logic                                                      clk_i,
   input  logic                                                      rst_ni,
   input  logic                                                      test_i,
+  SNOOP_BUS.Slave                                                   snoop_ports [Cfg.NoSlvPorts-1:0],
   ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
   AXI_BUS.Master                                                    mst_ports 
 );

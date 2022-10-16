@@ -35,7 +35,7 @@
  `define SNOOP_TYPEDEF_CR_CHAN_T(cr_chan_t)                     \
   typedef struct packed {                                       \
     snoop_pkg::resp_t     resp;                                 \
-  } cd_chan_t;
+  } cr_chan_t;
 `define SNOOP_TYPEDEF_REQ_T(req_t, ac_chan_t)                   \
   typedef struct packed {                                       \
     ac_chan_t ac;                                               \
@@ -50,7 +50,6 @@
     cd_chan_t cd;                                               \
     logic     cr_valid;                                         \
     cr_chan_t cr;                                               \
-    logic     cf_last;
   } resp_t;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
