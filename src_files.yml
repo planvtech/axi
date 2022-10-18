@@ -15,6 +15,7 @@ axi:
     # Level 1
     - src/axi_intf.sv
     - src/ace_intf.sv
+    - src/snoop_intf.sv
     # Level 2
     - src/axi_atop_filter.sv
     - src/axi_burst_splitter.sv
@@ -73,6 +74,7 @@ axi_sim:
     - src/axi_sim_mem.sv
     - src/axi_test.sv
     - src/ace_test.sv
+    - src/snoop_test.sv
   flags:
     - skip_synthesis
     - only_local
