@@ -32,15 +32,15 @@
     data_t                data;                                 \
     logic                 last;                                 \
   } cd_chan_t;
- `define SNOOP_TYPEDEF_CR_CHAN_T(cr_chan_t)                     \
+`define SNOOP_TYPEDEF_CR_CHAN_T(cr_chan_t)                      \
   typedef struct packed {                                       \
     snoop_pkg::resp_t     resp;                                 \
   } cr_chan_t;
-`define SNOOP_TYPEDEF_REQ_T(req_t, ac_chan_t)                   \
+`define SNOOP_TYPEDEF_REQ_T(req_t, ac_chan_t)      \
   typedef struct packed {                                       \
-    ac_chan_t ac;                                               \
-    logic     ac_valid;                                         \                                                \
+    logic     ac_valid;                                         \
     logic     cd_ready;                                         \
+    ac_chan_t ac;                                               \
     logic     cr_ready;                                         \
   } req_t;
 `define SNOOP_TYPEDEF_RESP_T(resp_t, cd_chan_t, cr_chan_t)      \

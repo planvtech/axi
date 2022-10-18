@@ -39,7 +39,7 @@
   __opt_as __lhs.cd_valid = __rhs.cd_valid;                               \
   `__SNOOP_TO_CD(__opt_as, __lhs.cd, __lhs_sep, __rhs.cd, __rhs_sep)      \
   __opt_as __lhs.cr_valid = __rhs.cr_valid;                               \
-  `__SNOOP_TO_CR(__opt_as, __lhs.r, __lhs_sep, __rhs.r, __rhs_sep)
+  `__SNOOP_TO_CR(__opt_as, __lhs.cr, __lhs_sep, __rhs.cr, __rhs_sep)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 

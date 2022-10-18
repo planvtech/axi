@@ -68,4 +68,7 @@ package ace_pkg;
     int unsigned   AxiDataWidth;
   } ccu_cfg_t;
 
+ /// transaction type
+  typedef enum logic[2:0] {R_NO_SNP, R_ONCE, R_SHARED, C_INVALID, C_UNIQUE, W_NO_SNP, W_BACK} ace_trs_t;
+
 endpackage

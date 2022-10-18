@@ -183,8 +183,8 @@ module tb_ace_ccu_top #(
   end
 
   SNOOP_BUS #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
-    .AXI_DATA_WIDTH ( AxiDataWidth      )
+    .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+    .SNOOP_DATA_WIDTH ( AxiDataWidth      )
   ) snp [TbNumMst-1:0] ();
 
 
@@ -261,7 +261,7 @@ module tb_ace_ccu_top #(
     .clk_i                  ( clk     ),
     .rst_ni                 ( rst_n   ),
     .test_i                 ( 1'b0    ),
-    .snoop_ports            ( SNOOP   ),
+    .snoop_ports            ( snp   ),
     .slv_ports              ( master  ),
     .mst_ports              ( slave[0]   )
   );
