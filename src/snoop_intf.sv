@@ -21,7 +21,7 @@ interface SNOOP_BUS #(
   typedef logic [SNOOP_DATA_WIDTH-1:0] data_t;
 
   addr_t                ac_addr;
-  snoop_pkg::acprot_t   ac_prot;
+  snoop_pkg::acprot_t   ac_acprot;
   snoop_pkg::acsnoop_t  ac_acsnoop;
   logic                 ac_valid;
   logic                 ac_ready;
@@ -38,20 +38,20 @@ interface SNOOP_BUS #(
 
 
   modport Master (
-    input   ac_addr, ac_prot, ac_acsnoop, ac_valid, output ac_ready,
+    input   ac_addr, ac_acprot, ac_acsnoop, ac_valid, output ac_ready,
     input   cr_ready, output cr_valid, cr_resp,
     input   cd_ready, output cd_data, cd_last, cd_valid
   );
 
  modport Slave (
-    output   ac_addr, ac_prot, ac_acsnoop, ac_valid, input ac_ready,
+    output   ac_addr, ac_acprot, ac_acsnoop, ac_valid, input ac_ready,
     output   cr_ready, input cr_valid, cr_resp,
     output   cd_ready, input cd_data, cd_last, cd_valid
   );
 
 
   modport Monitor (
-    input    ac_addr, ac_prot, ac_acsnoop, ac_valid, ac_ready,
+    input    ac_addr, ac_acprot, ac_acsnoop, ac_valid, ac_ready,
              cr_ready, cr_valid, cr_resp,
              cd_ready, cd_data, cd_last, cd_valid
   );
@@ -71,7 +71,7 @@ interface SNOOP_BUS_DV #(
   typedef logic [SNOOP_DATA_WIDTH-1:0] data_t;
 
   addr_t                ac_addr;
-  snoop_pkg::acprot_t   ac_prot;
+  snoop_pkg::acprot_t   ac_acprot;
   snoop_pkg::acsnoop_t  ac_acsnoop;
   logic                 ac_valid;
   logic                 ac_ready;
@@ -88,20 +88,20 @@ interface SNOOP_BUS_DV #(
 
 
   modport Master (
-    input   ac_addr, ac_prot, ac_acsnoop, ac_valid, output ac_ready,
+    input   ac_addr, ac_acprot, ac_acsnoop, ac_valid, output ac_ready,
     input   cr_ready, output cr_valid, cr_resp,
     input   cd_ready, output cd_data, cd_last, cd_valid
   );
 
  modport Slave (
-    output   ac_addr, ac_prot, ac_acsnoop, ac_valid, input ac_ready,
+    output   ac_addr, ac_acprot, ac_acsnoop, ac_valid, input ac_ready,
     output   cr_ready, input cr_valid, cr_resp,
     output   cd_ready, input cd_data, cd_last, cd_valid
   );
 
 
   modport Monitor (
-    input    ac_addr, ac_prot, ac_acsnoop, ac_valid, ac_ready,
+    input    ac_addr, ac_acprot, ac_acsnoop, ac_valid, ac_ready,
              cr_ready, cr_valid, cr_resp,
              cd_ready, cd_data, cd_last, cd_valid
   );
@@ -112,7 +112,7 @@ interface SNOOP_BUS_DV #(
   // AC
   assert property (@(posedge clk_i) (ac_valid && !ac_ready |=> $stable(ac_addr)));
   assert property (@(posedge clk_i) (ac_valid && !ac_ready |=> $stable(ac_acsnoop)));
-  assert property (@(posedge clk_i) (ac_valid && !ac_ready |=> $stable(ac_prot)));
+  assert property (@(posedge clk_i) (ac_valid && !ac_ready |=> $stable(ac_acprot)));
   // CR
   assert property (@(posedge clk_i) (cr_valid && !cr_ready |=> $stable(cr_resp)));
   // CD
