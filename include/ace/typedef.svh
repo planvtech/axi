@@ -81,6 +81,8 @@
     ar_chan_t ar;                                             \
     logic     ar_valid;                                           \
     logic     r_ready;                                            \
+    logic     wack;                                               \
+    logic     rack;                                               \
   } req_t;
 `define ACE_TYPEDEF_RESP_T(resp_t, b_chan_t, r_chan_t)  \
   typedef struct packed {                               \

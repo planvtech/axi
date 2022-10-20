@@ -25,10 +25,11 @@
 `include "ace/assign.svh"
 
 module tb_ace_xbar #(
-  parameter bit TbEnAtop = 1'b1,            // enable atomic operations (ATOPs)
-  parameter bit TbEnExcl = 1'b0,            // enable exclusive accesses
-  parameter bit TbUniqueIds = 1'b0,         // restrict to only unique IDs
-  parameter int unsigned TbNumMst = 32'd6,  // how many AXI masters there are
+  parameter bit          TbEnAtop = 1'b1, // enable atomic operations (ATOPs)
+  parameter bit          TbEnExcl = 1'b0, // enable exclusive accesses
+  parameter bit          TbUniqueIds = 1'b0, // restrict to only unique IDs
+  parameter int unsigned TbPipeline = 32'd1,
+  parameter int unsigned TbNumMst = 32'd6, // how many AXI masters there are
   parameter int unsigned TbNumSlv = 32'd8   // how many AXI slaves there are
 );
   // Random master no Transactions
@@ -55,6 +56,7 @@ module tb_ace_xbar #(
     MaxSlvTrans:        6,
     FallThrough:        1'b0,
     LatencyMode:        axi_pkg::CUT_ALL_AX,
+    PipelineStages:     TbPipeline,
     AxiIdWidthSlvPorts: AxiIdWidthMasters,
     AxiIdUsedSlvPorts:  AxiIdUsed,
     UniqueIds:          TbUniqueIds,
@@ -364,7 +366,7 @@ module tb_ace_xbar #(
     assign master_monitor_dv[i].aw_user     = master[i].aw_user  ;
     assign master_monitor_dv[i].aw_valid    = master[i].aw_valid ;
     assign master_monitor_dv[i].aw_ready    = master[i].aw_ready ;
-    assign master_monitor_dv[i].aw_awsnoop  = master[i].aw_awsnoop;
+    assign master_monitor_dv[i].aw_snoop  = master[i].aw_snoop;
     assign master_monitor_dv[i].aw_bar      = master[i].aw_bar ;
     assign master_monitor_dv[i].aw_domain   = master[i].aw_domain ;
     assign master_monitor_dv[i].aw_awunique = master[i].aw_awunique ;
@@ -392,7 +394,7 @@ module tb_ace_xbar #(
     assign master_monitor_dv[i].ar_user     = master[i].ar_user  ;
     assign master_monitor_dv[i].ar_valid    = master[i].ar_valid ;
     assign master_monitor_dv[i].ar_ready    = master[i].ar_ready ;
-    assign master_monitor_dv[i].ar_arsnoop  = master[i].ar_arsnoop ;
+    assign master_monitor_dv[i].ar_snoop  = master[i].ar_snoop ;
     assign master_monitor_dv[i].ar_bar      = master[i].ar_bar ;
     assign master_monitor_dv[i].ar_domain   = master[i].ar_domain ;
     assign master_monitor_dv[i].r_id        = master[i].r_id     ;
@@ -402,6 +404,8 @@ module tb_ace_xbar #(
     assign master_monitor_dv[i].r_user      = master[i].r_user   ;
     assign master_monitor_dv[i].r_valid     = master[i].r_valid  ;
     assign master_monitor_dv[i].r_ready     = master[i].r_ready  ;
+    assign master_monitor_dv[i].wack     = master[i].wack  ;
+    assign master_monitor_dv[i].rack     = master[i].rack  ;
   end
   for (genvar i = 0; i < TbNumSlv; i++) begin : gen_connect_slave_monitor
     assign slave_monitor_dv[i].aw_id        = slave[i].aw_id    ;
@@ -418,7 +422,7 @@ module tb_ace_xbar #(
     assign slave_monitor_dv[i].aw_user      = slave[i].aw_user  ;
     assign slave_monitor_dv[i].aw_valid     = slave[i].aw_valid ;
     assign slave_monitor_dv[i].aw_ready     = slave[i].aw_ready ;
-    assign slave_monitor_dv[i].aw_awsnoop   = slave[i].aw_awsnoop ;
+    assign slave_monitor_dv[i].aw_snoop   = slave[i].aw_snoop ;
     assign slave_monitor_dv[i].aw_bar       = slave[i].aw_bar ;
     assign slave_monitor_dv[i].aw_domain    = slave[i].aw_domain ;
     assign slave_monitor_dv[i].aw_awunique  = slave[i].aw_awunique ;
@@ -446,7 +450,7 @@ module tb_ace_xbar #(
     assign slave_monitor_dv[i].ar_user      = slave[i].ar_user  ;
     assign slave_monitor_dv[i].ar_valid     = slave[i].ar_valid ;
     assign slave_monitor_dv[i].ar_ready     = slave[i].ar_ready ;
-    assign slave_monitor_dv[i].ar_arsnoop   = slave[i].ar_arsnoop ;
+    assign slave_monitor_dv[i].ar_snoop   = slave[i].ar_snoop ;
     assign slave_monitor_dv[i].ar_bar       = slave[i].ar_bar ;
     assign slave_monitor_dv[i].ar_domain    = slave[i].ar_domain ;
     assign slave_monitor_dv[i].r_id         = slave[i].r_id     ;
@@ -456,5 +460,7 @@ module tb_ace_xbar #(
     assign slave_monitor_dv[i].r_user       = slave[i].r_user   ;
     assign slave_monitor_dv[i].r_valid      = slave[i].r_valid  ;
     assign slave_monitor_dv[i].r_ready      = slave[i].r_ready  ;
+    assign slave_monitor_dv[i].wack     = slave[i].wack  ;
+    assign slave_monitor_dv[i].rack     = slave[i].rack  ;
   end
 endmodule

@@ -36,11 +36,10 @@ package ace_test;
     logic [3:0]         ax_region   = '0;
     logic [5:0]         ax_atop     = '0; // Only defined on the AW channel.
     rand logic [UW-1:0] ax_user     = '0;
-    rand logic [2:0]    ax_awsnoop  = '0;
+    rand logic [2:0]    ax_snoop  = '0;
     rand logic [1:0]    ax_bar      = '0;
     rand logic [1:0]    ax_domain   = '0;
-    rand logic          ax_awunique = '0;
-    rand logic [3:0]    ax_arsnoop  = '0;
+    rand logic          ax_awunique = '0; // Only for AW
   endclass
 
  /// The data transferred on a beat on the R channel.
@@ -57,10 +56,10 @@ package ace_test;
   endclass
 
    /// The data transferred on a beat on the W channel.
-class axi_w_beat #(
-                   parameter DW = 32,
-                   parameter UW = 1
-                   );
+  class axi_w_beat #(
+    parameter DW = 32,
+    parameter UW = 1
+  );
    rand logic [DW-1:0]  w_data = '0;
    rand logic [DW/8-1:0] w_strb = '0;
    logic                 w_last = '0;
@@ -129,7 +128,7 @@ endclass
       ace.aw_atop     <= '0;
       ace.aw_user     <= '0;
       ace.aw_valid    <= '0;
-      ace.aw_awsnoop  <= '0;
+      ace.aw_snoop  <= '0;
       ace.aw_bar      <= '0;
       ace.aw_domain   <= '0;
       ace.aw_awunique <= '0;
@@ -150,11 +149,13 @@ endclass
       ace.ar_qos      <= '0;
       ace.ar_region   <= '0;
       ace.ar_user     <= '0;
-      ace.ar_arsnoop  <= '0;
+      ace.ar_snoop  <= '0;
       ace.ar_bar      <= '0;
       ace.ar_domain   <= '0;
       ace.ar_valid    <= '0;
       ace.r_ready     <= '0;
+      ace.wack <= '0;
+      ace.rack <= '0;
     endfunction
 
     function void reset_slave();
@@ -198,7 +199,7 @@ endclass
       ace.aw_atop     <= #TA beat.ax_atop;
       ace.aw_user     <= #TA beat.ax_user;
       ace.aw_valid    <= #TA 1;
-      ace.aw_awsnoop  <= #TA beat.ax_awsnoop;
+      ace.aw_snoop  <= #TA beat.ax_snoop;
       ace.aw_bar      <= #TA beat.ax_bar;
       ace.aw_domain   <= #TA beat.ax_domain;
       ace.aw_awunique <= #TA beat.ax_awunique;
@@ -218,7 +219,7 @@ endclass
       ace.aw_atop     <= #TA '0;
       ace.aw_user     <= #TA '0;
       ace.aw_valid    <= #TA  0;
-      ace.aw_awsnoop  <= #TA '0;
+      ace.aw_snoop  <= #TA '0;
       ace.aw_bar      <= #TA '0;
       ace.aw_domain   <= #TA '0;
       ace.aw_awunique <= #TA  0;
@@ -258,6 +259,9 @@ endclass
       ace.b_resp  <= #TA '0;
       ace.b_user  <= #TA '0;
       ace.b_valid <= #TA 0;
+      cycle_start();
+      while (ace.wack != 1) begin cycle_end(); cycle_start(); end
+      cycle_end();
     endtask
 
     /// Issue a beat on the AR channel.
@@ -276,7 +280,7 @@ endclass
       ace.ar_region   <= #TA beat.ax_region;
       ace.ar_user     <= #TA beat.ax_user;
       ace.ar_valid    <= #TA 1;
-      ace.ar_arsnoop  <= #TA beat.ax_arsnoop;
+      ace.ar_snoop  <= #TA beat.ax_snoop;
       ace.ar_bar      <= #TA beat.ax_bar;
       ace.ar_domain   <= #TA beat.ax_domain;
       cycle_start();
@@ -294,7 +298,7 @@ endclass
       ace.ar_region   <= #TA '0;
       ace.ar_user     <= #TA '0;
       ace.ar_valid    <= #TA 0;
-      ace.ar_arsnoop  <= #TA '0;
+      ace.ar_snoop  <= #TA '0;
       ace.ar_bar      <= #TA '0;
       ace.ar_domain   <= #TA '0;     
     endtask
@@ -318,6 +322,9 @@ endclass
       ace.r_last  <= #TA '0;
       ace.r_user  <= #TA '0;
       ace.r_valid <= #TA 0;
+      cycle_start();
+      while (ace.rack != 1) begin cycle_end(); cycle_start(); end
+      cycle_end();
     endtask
 
     /// Wait for a beat on the AW channel.
@@ -340,11 +347,11 @@ endclass
       beat.ax_region    = ace.aw_region;
       beat.ax_atop      = ace.aw_atop;
       beat.ax_user      = ace.aw_user;
-      beat.ax_awsnoop   = ace.aw_awsnoop;
+      beat.ax_snoop   = ace.aw_snoop;
       beat.ax_bar       = ace.aw_bar;
       beat.ax_domain    = ace.aw_domain;
       beat.ax_awunique  = ace.aw_awunique;
-      cycle_end();  
+      cycle_end();
       ace.aw_ready <= #TA 0;
     endtask
 
@@ -377,6 +384,9 @@ endclass
       beat.b_user = ace.b_user;
       cycle_end();
       ace.b_ready <= #TA 0;
+      ace.wack <= #TA 1;
+      cycle_start();
+      ace.wack <= #TA 0;
     endtask
 
     /// Wait for a beat on the AR channel.
@@ -399,7 +409,7 @@ endclass
       beat.ax_region  = ace.ar_region;
       beat.ax_atop    = 'X;  // Not defined on the AR channel.
       beat.ax_user    = ace.ar_user;
-      beat.ax_arsnoop = ace.ar_arsnoop;
+      beat.ax_snoop = ace.ar_snoop;
       beat.ax_bar     = ace.ar_bar;
       beat.ax_domain  = ace.ar_domain;
       cycle_end();
@@ -421,6 +431,9 @@ endclass
       beat.r_user = ace.r_user;
       cycle_end();
       ace.r_ready <= #TA 0;
+      ace.rack <= #TA 1;
+      cycle_start();
+      ace.rack <= #TA 0;
     endtask
 
     /// Monitor the AW channel and return the next beat.
@@ -442,7 +455,7 @@ endclass
       beat.ax_region    = ace.aw_region;
       beat.ax_atop      = ace.aw_atop;
       beat.ax_user      = ace.aw_user;
-      beat.ax_awsnoop   = ace.aw_awsnoop;
+      beat.ax_snoop   = ace.aw_snoop;
       beat.ax_bar       = ace.aw_bar;
       beat.ax_domain    = ace.aw_domain;
       beat.ax_awunique  = ace.aw_awunique;
@@ -495,7 +508,7 @@ endclass
       beat.ax_region  = ace.ar_region;
       beat.ax_atop    = 'X;  // Not defined on the AR channel.
       beat.ax_user    = ace.ar_user;
-      beat.ax_arsnoop = ace.ar_arsnoop;
+      beat.ax_snoop = ace.ar_snoop;
       beat.ax_bar     = ace.ar_bar;
       beat.ax_domain  = ace.ar_domain;
       cycle_end();
@@ -801,8 +814,8 @@ endclass
       // currently done in the functions `create_aws()` and `send_ars()`.
       ax_ace_beat.ax_id       = id;
       ax_ace_beat.ax_qos      = qos;
-      ax_ace_beat.ax_awsnoop  = awsnoop;
-      ax_ace_beat.ax_arsnoop  = arsnoop;
+      ax_ace_beat.ax_snoop  = awsnoop;
+      ax_ace_beat.ax_snoop  = arsnoop;
       ax_ace_beat.ax_bar      = bar;
       ax_ace_beat.ax_domain   = domain;
       ax_ace_beat.ax_awunique = awunique;
@@ -909,7 +922,7 @@ endclass
         ar_ace_beat.ax_len = n_bytes / 2**size;
         // The address must be aligned to the total number of bytes in the burst.
         ar_ace_beat.ax_addr = ar_ace_beat.ax_addr & ~(n_bytes-1);
-        ar_ace_beat.ax_arsnoop = $urandom();
+        ar_ace_beat.ax_snoop = $urandom();
         ar_ace_beat.ax_bar = $urandom();
         ar_ace_beat.ax_domain = $urandom();
 
@@ -1491,7 +1504,7 @@ module ace_chan_logger #(
         ar_beat.region = ar_chan_i.region;
         ar_beat.atop   = '0;
         ar_beat.user   = ar_chan_i.user;
-        ar_beat.awsnoop=ar_chan_i.arsnoop;
+        ar_beat.snoop=ar_chan_i.snoop;
         ar_beat.bar=ar_chan_i.bar;
         ar_beat.domain=ar_chan_i.domain;
         ar_queues[ar_chan_i.id].push_back(ar_beat);
@@ -1554,10 +1567,8 @@ module ace_chan_logger #(
         aw_beat = aw_queue[0];
         w_beat  = w_queue.pop_front();
 
-        
         log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b, AWSNOOP: %b",
-                        $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop, aw_beat.awsnoop);
-              
+                        $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop, aw_beat.snoop);
 
         log_name = $sformatf("./axi_log/%s/write.log", LoggerName);
         fd = $fopen(log_name, "a");
@@ -1600,7 +1611,7 @@ module ace_chan_logger #(
           fd = $fopen(log_name, "a");
           if (fd) begin
             log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b, ARSNOOP: %b",
-                            $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop, ar_beat.awsnoop);
+                            $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop, ar_beat.snoop);
 
             $fdisplay(fd, log_string);
             // write out error if last beat does not match!
