@@ -794,25 +794,25 @@ endclass
       trs      = $urandom_range(0,7);
       
       case(trs )
-        ace_pkg::R_NO_SNP: begin
+        ace_pkg::READ_NO_SNOOP: begin
           arsnoop = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
           awsnoop = 'b000;
         end
-        ace_pkg::C_INVALID: begin
+        ace_pkg::CLEAN_INVALID: begin
           arsnoop = 'b1001;
           domain  = 'b00;
           bar     = 'b00;
           awsnoop = 'b000;
         end
-        ace_pkg::W_NO_SNP: begin
+        ace_pkg::WRITE_NO_SNOOP: begin
           arsnoop = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
           awsnoop = 'b000;
         end
-        ace_pkg::W_BACK: begin
+        ace_pkg::WRITE_BACK: begin
           arsnoop = 'b0000;
           domain  = 'b00;
           bar     = 'b00;

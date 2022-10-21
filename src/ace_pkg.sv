@@ -69,6 +69,6 @@ package ace_pkg;
   } ccu_cfg_t;
 
  /// transaction type
-  typedef enum logic[2:0] {R_NO_SNP, R_ONCE, R_SHARED, C_INVALID, C_UNIQUE, W_NO_SNP, W_BACK} ace_trs_t;
+  typedef enum logic[2:0] {READ_NO_SNOOP, READ_ONCE, READ_SHARED, CLEAN_INVALID, CLEAN_UNIQUE, WRITE_NO_SNOOP, WRITE_BACK} ace_trs_t;
 
 endpackage

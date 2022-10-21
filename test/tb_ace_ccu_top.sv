@@ -23,8 +23,7 @@
 
 `include "ace/typedef.svh"
 `include "ace/assign.svh"
-`include "snoop/typedef.svh"
-`include "snoop/assign.svh"
+
 
 module tb_ace_ccu_top #(
   parameter bit TbEnAtop = 1'b1,            // enable atomic operations (ATOPs)

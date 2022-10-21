@@ -166,8 +166,6 @@ endmodule
 
 `include "ace/assign.svh"
 `include "ace/typedef.svh"
-`include "snoop/assign.svh"
-`include "snoop/typedef.svh"
 
 module ace_ccu_top_intf
 import cf_math_pkg::idx_width;
