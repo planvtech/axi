@@ -36,7 +36,7 @@ package ace_test;
     logic [3:0]         ax_region   = '0;
     logic [5:0]         ax_atop     = '0; // Only defined on the AW channel.
     rand logic [UW-1:0] ax_user     = '0;
-    rand logic [2:0]    ax_snoop  = '0;
+    rand logic [3:0]    ax_snoop  = '0; // AW channel requires 3 bits, AR channel requires 4 bits
     rand logic [1:0]    ax_bar      = '0;
     rand logic [1:0]    ax_domain   = '0;
     rand logic          ax_awunique = '0; // Only for AW
@@ -575,10 +575,9 @@ endclass
     typedef logic [IW-1:0]      id_t;
     typedef axi_pkg::len_t      len_t;
     typedef axi_pkg::size_t     size_t;
-    typedef ace_pkg::arsnoop_t  arsnoop_t;
+    typedef ace_pkg::arsnoop_t  snoop_t; // use only arsnoop_t, which is bigger than awsnoop_t
     typedef ace_pkg::bar_t      bar_t;
     typedef ace_pkg::domain_t   domain_t;
-    typedef ace_pkg::awsnoop_t  awsnoop_t;
     typedef ace_pkg::awunique_t awunique_t;
 
 
@@ -687,8 +686,7 @@ endclass
       automatic size_t size;
       automatic bar_t bar;
       automatic domain_t domain;
-      automatic awsnoop_t awsnoop;
-      automatic arsnoop_t arsnoop;
+      automatic snoop_t snoop;
       automatic awunique_t awunique;
       automatic int unsigned mem_region_idx;
       automatic mem_region_t mem_region;
@@ -804,8 +802,7 @@ endclass
       qos     = $urandom();
       bar     = $urandom();
       domain  = $urandom();
-      awsnoop = $urandom();
-      arsnoop = $urandom();
+      snoop   = $urandom();
       awunique= $urandom();
 
       // rand_success = std::randomize(id); assert(rand_success);
@@ -814,12 +811,10 @@ endclass
       // currently done in the functions `create_aws()` and `send_ars()`.
       ax_ace_beat.ax_id       = id;
       ax_ace_beat.ax_qos      = qos;
-      ax_ace_beat.ax_snoop  = awsnoop;
-      ax_ace_beat.ax_snoop  = arsnoop;
+      ax_ace_beat.ax_snoop    = snoop;
       ax_ace_beat.ax_bar      = bar;
       ax_ace_beat.ax_domain   = domain;
       ax_ace_beat.ax_awunique = awunique;
-     
 
       return ax_ace_beat;
     endfunction
