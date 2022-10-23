@@ -12,7 +12,7 @@
 //
 
 
-/// A set of testbench utilities for AXI interfaces.
+/// A set of testbench utilities for ACE interfaces.
 package ace_test;
 
   import axi_pkg::*;
@@ -575,7 +575,7 @@ endclass
     typedef ace_driver_t::ax_ace_beat_t ax_ace_beat_t;
     typedef ace_driver_t::b_beat_t  b_beat_t;
     typedef ace_driver_t::r_ace_beat_t  r_ace_beat_t;
-    typedef ace_driver_t::w_beat_t  w_beat_t;
+    typedef ace_driver_t::w_beat_t  w_beat_t;  
 
     static addr_t PFN_MASK = '{11: 1'b0, 10: 1'b0, 9: 1'b0, 8: 1'b0, 7: 1'b0, 6: 1'b0, 5: 1'b0,
         4: 1'b0, 3: 1'b0, 2: 1'b0, 1: 1'b0, 0: 1'b0, default: '1};
@@ -680,6 +680,7 @@ endclass
       automatic int unsigned mem_region_idx;
       automatic mem_region_t mem_region;
       automatic int cprob;
+      automatic logic [1:0] trs;
 
       // No memory regions defined
       if (mem_map.size() == 0) begin
@@ -787,13 +788,44 @@ endclass
       end
 
       ax_ace_beat.ax_addr = addr;
-      id      = $urandom();
-      qos     = $urandom();
-      bar     = $urandom();
-      domain  = $urandom();
-      awsnoop = $urandom();
-      arsnoop = $urandom();
-      awunique= $urandom();
+      id       = $urandom();
+      qos      = $urandom();
+      awunique = 0;
+      trs      = $urandom_range(0,7);
+      
+      case(trs )
+        ace_pkg::READ_NO_SNOOP: begin
+          arsnoop = 'b0000;
+          domain  = 'b00;
+          bar     = 'b00;
+          awsnoop = 'b000;
+        end
+        ace_pkg::CLEAN_INVALID: begin
+          arsnoop = 'b1001;
+          domain  = 'b00;
+          bar     = 'b00;
+          awsnoop = 'b000;
+        end
+        ace_pkg::WRITE_NO_SNOOP: begin
+          arsnoop = 'b0000;
+          domain  = 'b00;
+          bar     = 'b00;
+          awsnoop = 'b000;
+        end
+        ace_pkg::WRITE_BACK: begin
+          arsnoop = 'b0000;
+          domain  = 'b00;
+          bar     = 'b00;
+          awsnoop = 'b011;
+        end
+        default: begin
+          arsnoop = 'b0000;
+          domain  = 'b00;
+          bar     = 'b00;
+          awsnoop = 'b000;
+        end
+      endcase
+         
 
       // rand_success = std::randomize(id); assert(rand_success);
       // rand_success = std::randomize(qos); assert(rand_success);
@@ -909,9 +941,6 @@ endclass
         ar_ace_beat.ax_len = n_bytes / 2**size;
         // The address must be aligned to the total number of bytes in the burst.
         ar_ace_beat.ax_addr = ar_ace_beat.ax_addr & ~(n_bytes-1);
-        ar_ace_beat.ax_arsnoop = $urandom();
-        ar_ace_beat.ax_bar = $urandom();
-        ar_ace_beat.ax_domain = $urandom();
 
       end
     endfunction

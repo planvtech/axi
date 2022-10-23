@@ -29,13 +29,18 @@ import cf_math_pkg::idx_width;
   parameter type slv_req_t                                            = logic,
   parameter type slv_resp_t                                           = logic,
   parameter type mst_req_t                                            = logic,
-  parameter type mst_resp_t                                           = logic
+  parameter type mst_resp_t                                           = logic,
+  parameter type snoop_req_t                                          = logic,
+  parameter type snoop_resp_t                                         = logic
+
 ) (
   input  logic                                                          clk_i,
   input  logic                                                          rst_ni,
   input  logic                                                          test_i,
-  input  slv_req_t  [Cfg.NoSlvPorts-1:0]                                slv_ports_req_i,
-  output slv_resp_t [Cfg.NoSlvPorts-1:0]                                slv_ports_resp_o,
+  input  slv_req_t    [Cfg.NoSlvPorts-1:0]                              slv_ports_req_i,
+  output slv_resp_t   [Cfg.NoSlvPorts-1:0]                              slv_ports_resp_o,
+  output snoop_req_t  [Cfg.NoSlvPorts-1:0]                              slv_snp_req_o,
+  input  snoop_resp_t [Cfg.NoSlvPorts-1:0]                              slv_snp_resp_i,                          
   output mst_req_t                                                      mst_ports_req_o,
   input  mst_resp_t                                                     mst_ports_resp_i
 );
@@ -52,8 +57,6 @@ slv_resp_t [Cfg.NoSlvPorts-1:0]        ccu_resps_o;
 // signals from the CCU
 slv_req_t                              ccu_reqs_o;   
 slv_resp_t                             ccu_resps_i;
-
-
 
 // selection lines for mux and demuxes
 logic [Cfg.NoSlvPorts-1:0]    slv_aw_select, slv_ar_select;
@@ -168,12 +171,13 @@ module ace_ccu_top_intf
 import cf_math_pkg::idx_width;
 #(
   parameter int unsigned AXI_USER_WIDTH =  0,
-  parameter ace_pkg::ccu_cfg_t Cfg     = '0,
+  parameter ace_pkg::ccu_cfg_t Cfg      = '0,
   parameter bit ATOPS                   = 1'b1
 ) (
   input  logic                                                      clk_i,
   input  logic                                                      rst_ni,
   input  logic                                                      test_i,
+  SNOOP_BUS.Slave                                                   snoop_ports [Cfg.NoSlvPorts-1:0],
   ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
   AXI_BUS.Master                                                    mst_ports 
 );
@@ -201,19 +205,28 @@ import cf_math_pkg::idx_width;
   `ACE_TYPEDEF_REQ_T(slv_ace_req_t, slv_ace_aw_chan_t, w_chan_t, slv_ace_ar_chan_t)
   `ACE_TYPEDEF_RESP_T(mst_ace_resp_t, mst_b_chan_t, mst_ace_r_chan_t)
   `ACE_TYPEDEF_RESP_T(slv_ace_resp_t, slv_b_chan_t, slv_ace_r_chan_t)
+  `SNOOP_TYPEDEF_AC_CHAN_T(snoop_ac_t, addr_t)
+  `SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, data_t)  
+  `SNOOP_TYPEDEF_CR_CHAN_T(snoop_cr_t)  
+  `SNOOP_TYPEDEF_REQ_T(snoop_req_t, snoop_ac_t)
+  `SNOOP_TYPEDEF_RESP_T(snoop_resp_t, snoop_cd_t, snoop_cr_t)
 
 
-  mst_ace_req_t                         mst_ace_reqs;
-  mst_ace_resp_t                        mst_ace_resps;
-  slv_ace_req_t   [Cfg.NoSlvPorts-1:0]  slv_ace_reqs;
-  slv_ace_resp_t  [Cfg.NoSlvPorts-1:0]  slv_ace_resps;
+  mst_ace_req_t                           mst_ace_reqs;
+  mst_ace_resp_t                          mst_ace_resps;
+  slv_ace_req_t     [Cfg.NoSlvPorts-1:0]  slv_ace_reqs;
+  slv_ace_resp_t    [Cfg.NoSlvPorts-1:0]  slv_ace_resps;
+  snoop_req_t       [Cfg.NoSlvPorts-1:0]  snoop_reqs;
+  snoop_resp_t      [Cfg.NoSlvPorts-1:0]  snoop_resps;
 
 
 
   /// Assigning ACE request from CCU Mux to slave(RAM )  
   `AXI_ASSIGN_FROM_REQ(mst_ports, mst_ace_reqs)
-  /// Assigning AXI response from slave (RAM ) to CCU mux which accepts only ACE type response
+  /// Assigning AXI response from slave (RAM) to CCU mux which accepts only ACE type response
   `ACE_ASSIGN_TO_RESP(mst_ace_resps, mst_ports)
+
+   
    
   
 
@@ -221,7 +234,10 @@ import cf_math_pkg::idx_width;
 
     `ACE_ASSIGN_TO_REQ(slv_ace_reqs[i], slv_ports[i])
     `ACE_ASSIGN_FROM_RESP(slv_ports[i], slv_ace_resps[i])
-
+    /// Assigning SNOOP request from CCU logic to master 
+    `SNOOP_ASSIGN_FROM_REQ(snoop_ports[i], snoop_reqs[i])
+    /// Assigning SNOOP response from master to CCU logic
+    `SNOOP_ASSIGN_TO_RESP(snoop_resps[i], snoop_ports[i])
   end
 
 
@@ -240,13 +256,17 @@ import cf_math_pkg::idx_width;
     .slv_req_t      ( slv_ace_req_t     ),
     .slv_resp_t     ( slv_ace_resp_t    ),
     .mst_req_t      ( mst_ace_req_t     ),
-    .mst_resp_t     ( mst_ace_resp_t    )
+    .mst_resp_t     ( mst_ace_resp_t    ),
+    .snoop_req_t    ( snoop_req_t       ),
+    .snoop_resp_t   ( snoop_resp_t      )
   ) i_ccu_top (
     .clk_i,
     .rst_ni,
     .test_i,
     .slv_ports_req_i  (slv_ace_reqs ),
     .slv_ports_resp_o (slv_ace_resps),
+    .slv_snp_req_o    (snoop_reqs   ),
+    .slv_snp_resp_i   (snoop_resps  ),
     .mst_ports_req_o  (mst_ace_reqs ),
     .mst_ports_resp_i (mst_ace_resps)
   );

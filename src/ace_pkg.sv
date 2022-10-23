@@ -43,7 +43,7 @@ package ace_pkg;
   localparam logic [9:0] MuxAr   = (1 << 1);
   /// Slice on Mux R channel.
   localparam logic [9:0] MuxR    = (1 << 0);
-  /// Latency configuration for `axi_xbar`.
+  /// Latency configuration for `ace_xbar`.
   typedef enum logic [9:0] {
     NO_LATENCY    = 10'b000_00_000_00,
     CUT_SLV_AX    = DemuxAw | DemuxAr,
@@ -67,5 +67,8 @@ package ace_pkg;
     int unsigned   AxiAddrWidth;
     int unsigned   AxiDataWidth;
   } ccu_cfg_t;
+
+ /// transaction type
+  typedef enum logic[2:0] {READ_NO_SNOOP, READ_ONCE, READ_SHARED, CLEAN_INVALID, CLEAN_UNIQUE, WRITE_NO_SNOOP, WRITE_BACK} ace_trs_t;
 
 endpackage
