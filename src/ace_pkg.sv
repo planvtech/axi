@@ -15,15 +15,6 @@
 /// Contains all necessary type definitions, constants, and generally useful functions.
 package ace_pkg;
 
-   // CRRESP
-   typedef struct packed {
-      logic       wasUnique;
-      logic       isShared;
-      logic       passDirty;
-      logic       error;
-      logic       dataTransfer;
-   } crresp_t;
-
    // Support for snoop channels
    typedef logic [3:0] arsnoop_t;
    typedef logic [2:0] awsnoop_t;

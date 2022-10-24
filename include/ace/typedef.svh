@@ -134,7 +134,7 @@
   } cd_chan_t;
 `define SNOOP_TYPEDEF_CR_CHAN_T(cr_chan_t)                      \
   typedef struct packed {                                       \
-    snoop_pkg::resp_t     resp;                                 \
+    snoop_pkg::crresp_t     resp;                                 \
   } cr_chan_t;
 `define SNOOP_TYPEDEF_REQ_T(req_t, ac_chan_t)      \
   typedef struct packed {                                       \

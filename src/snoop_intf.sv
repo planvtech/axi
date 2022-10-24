@@ -26,7 +26,7 @@ interface SNOOP_BUS #(
   logic                 ac_valid;
   logic                 ac_ready;
 
-  snoop_pkg::resp_t     cr_resp;
+  snoop_pkg::crresp_t     cr_resp;
   logic                 cr_valid;
   logic                 cr_ready;
 
@@ -76,10 +76,10 @@ interface SNOOP_BUS_DV #(
   logic                 ac_valid;
   logic                 ac_ready;
 
-  snoop_pkg::resp_t     cr_resp;
+  snoop_pkg::crresp_t     cr_resp;
   logic                 cr_valid;
   logic                 cr_ready;
-  
+
   data_t                cd_data;
   logic                 cd_last;
   logic                 cd_valid;
