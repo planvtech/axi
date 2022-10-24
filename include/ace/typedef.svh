@@ -116,5 +116,53 @@
   `ACE_TYPEDEF_REQ_T(__name``_req_t, __name``_aw_chan_t, __name``_w_chan_t, __name``_ar_chan_t) \
   `ACE_TYPEDEF_RESP_T(__name``_resp_t, __name``_b_chan_t, __name``_r_chan_t)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// Usage Example:
+// `SNOOP_TYPEDEF_AC_CHAN_T(snoop_ac_t, snoop_addr_t)
+// 'SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, snoop_data_t)              
+// `SNOOP_TYPEDEF_REQ_T(snoop_req_t, snoop_ac_t)
+// `SNOOP_TYPEDEF_RESP_T(snoop_resp_t, snoop_cd_t, snoop_cr_t)
+`define SNOOP_TYPEDEF_AC_CHAN_T(ac_chan_t, addr_t)              \
+  typedef struct packed {                                       \
+    addr_t                addr;                                 \
+    snoop_pkg::acsnoop_t  snoop;                              \
+    snoop_pkg::acprot_t   prot;                               \
+  } ac_chan_t;
+`define SNOOP_TYPEDEF_CD_CHAN_T(cd_chan_t, data_t)              \
+  typedef struct packed {                                       \
+    data_t                data;                                 \
+    logic                 last;                                 \
+  } cd_chan_t;
+`define SNOOP_TYPEDEF_CR_CHAN_T(cr_chan_t)                      \
+  typedef struct packed {                                       \
+    snoop_pkg::resp_t     resp;                                 \
+  } cr_chan_t;
+`define SNOOP_TYPEDEF_REQ_T(req_t, ac_chan_t)      \
+  typedef struct packed {                                       \
+    logic     ac_valid;                                         \
+    logic     cd_ready;                                         \
+    ac_chan_t ac;                                               \
+    logic     cr_ready;                                         \
+  } req_t;
+`define SNOOP_TYPEDEF_RESP_T(resp_t, cd_chan_t, cr_chan_t)      \
+  typedef struct packed {                                       \
+    logic     ac_ready;                                         \
+    logic     cd_valid;                                         \
+    cd_chan_t cd;                                               \
+    logic     cr_valid;                                         \
+    cr_chan_t cr;                                               \
+  } resp_t;
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Usage Example:
+// `SNOOP_TYPEDEF_ALL(snoop, addr_t, data_t)
+//
+// This defines `snoop_req_t` and `snoop_resp_t` request/response structs as well as `snoop_ac_chan_t`,
+// `snoop_cd_chan_t` and `snoop_cr_chan_t` channel structs.
+  `define SNOOP_TYPEDEF_ALL(__name, __addr_t __data_t)                  \
+  `SNOOP_TYPEDEF_AC_CHAN_T(__name``_aw_chan_t, __addr_t)              \
+  `SNOOP_TYPEDEF_CR_CHAN_T(__name``_cr_chan_t)                        \
+  `SNOOP_TYPEDEF_REQ_T(__name``_req_t, __name``_ac_chan_t)            \
+  `SNOOP_TYPEDEF_RESP_T(__name``_resp_t, __name``_cd_chan_t, __name``_cr_chan_t)
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 `endif

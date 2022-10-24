@@ -12,7 +12,7 @@
 //
 
 
-/// A set of testbench utilities for AXI interfaces.
+/// A set of testbench utilities for ACE interfaces.
 package ace_test;
 
   import axi_pkg::*;
@@ -691,6 +691,7 @@ endclass
       automatic int unsigned mem_region_idx;
       automatic mem_region_t mem_region;
       automatic int cprob;
+      automatic logic [1:0] trs;
 
       // No memory regions defined
       if (mem_map.size() == 0) begin
@@ -798,12 +799,39 @@ endclass
       end
 
       ax_ace_beat.ax_addr = addr;
-      id      = $urandom();
-      qos     = $urandom();
-      bar     = $urandom();
-      domain  = $urandom();
-      snoop   = $urandom();
-      awunique= $urandom();
+      id       = $urandom();
+      qos      = $urandom();
+      awunique = 0;
+      trs      = $urandom_range(0,7);
+      
+      case(trs )
+        ace_pkg::READ_NO_SNOOP: begin
+          snoop = 'b0000;
+          domain  = 'b00;
+          bar     = 'b00;
+        end
+        ace_pkg::CLEAN_INVALID: begin
+          snoop = 'b1001;
+          domain  = 'b00;
+          bar     = 'b00;
+        end
+        ace_pkg::WRITE_NO_SNOOP: begin
+          snoop = 'b0000;
+          domain  = 'b00;
+          bar     = 'b00;
+        end
+        ace_pkg::WRITE_BACK: begin
+          snoop = 'b0011;
+          domain  = 'b00;
+          bar     = 'b00;
+        end
+        default: begin
+          snoop = 'b0000;
+          domain  = 'b00;
+          bar     = 'b00;
+        end
+      endcase
+         
 
       // rand_success = std::randomize(id); assert(rand_success);
       // rand_success = std::randomize(qos); assert(rand_success);
