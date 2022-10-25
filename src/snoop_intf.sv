@@ -11,92 +11,94 @@
 // specific language governing permissions and limitations under the License.
 
 
-// ACE bus interafces - snooping channels
+// Snoop bus interafces
 interface SNOOP_BUS #(
-  parameter int unsigned AXI_ADDR_WIDTH = 0,
-  parameter int unsigned AXI_DATA_WIDTH = 0
+  parameter int unsigned SNOOP_ADDR_WIDTH = 0,
+  parameter int unsigned SNOOP_DATA_WIDTH = 0
 );
 
-  typedef logic [AXI_ADDR_WIDTH-1:0] addr_t;
-  typedef logic [AXI_DATA_WIDTH-1:0] data_t;
+  typedef logic [SNOOP_ADDR_WIDTH-1:0] addr_t;
+  typedef logic [SNOOP_DATA_WIDTH-1:0] data_t;
 
-  logic ac_valid;
-  logic ac_ready;
-  addr_t ac_addr;
-  ace_pkg::acsnoop_t ac_snoop;
-  ace_pkg::acprot_t ac_prot;
+  addr_t                ac_addr;
+  snoop_pkg::acprot_t   ac_prot;
+  snoop_pkg::acsnoop_t  ac_snoop;
+  logic                 ac_valid;
+  logic                 ac_ready;
 
-  logic cr_valid;
-  logic cr_ready;
-  ace_pkg::crresp_t cr_resp;
+  snoop_pkg::crresp_t     cr_resp;
+  logic                 cr_valid;
+  logic                 cr_ready;
 
-  logic cd_valid;
-  logic cd_ready;
-  data_t cd_data;
-  logic cd_last;
+  data_t                cd_data;
+  logic                 cd_last;
+  logic                 cd_valid;
+  logic                 cd_ready;
 
   modport Master (
-    output ac_valid, ac_addr, ac_snoop, ac_prot, input ac_ready,
-    output cr_ready, input cr_valid, cr_resp,
-    output cd_ready, input cd_valid, cd_data, cd_last
+    input   ac_addr, ac_prot, ac_snoop, ac_valid, output ac_ready,
+    input   cr_ready, output cr_valid, cr_resp,
+    input   cd_ready, output cd_data, cd_last, cd_valid
   );
 
-  modport Slave (
-    input ac_valid, ac_addr, ac_snoop, ac_prot, output ac_ready,
-    input cr_ready, output cr_valid, cr_resp,
-    input cd_ready, output cd_valid, cd_data, cd_last
+ modport Slave (
+    output   ac_addr, ac_prot, ac_snoop, ac_valid, input ac_ready,
+    output   cr_ready, input cr_valid, cr_resp,
+    output   cd_ready, input cd_data, cd_last, cd_valid
   );
+
 
   modport Monitor (
-    input ac_valid, ac_addr, ac_snoop, ac_prot, ac_ready,
-    input cr_ready, cr_valid, cr_resp,
-    input cd_ready, cd_valid, cd_data, cd_last
+    input    ac_addr, ac_prot, ac_snoop, ac_valid, ac_ready,
+             cr_ready, cr_valid, cr_resp,
+             cd_ready, cd_data, cd_last, cd_valid
   );
 
 endinterface
 
-/// A clocked ACE interface for use in design verification.
+/// A clocked SNOOP interface for use in design verification.
 interface SNOOP_BUS_DV #(
-  parameter int unsigned AXI_ADDR_WIDTH = 0,
-  parameter int unsigned AXI_DATA_WIDTH = 0
+  parameter int unsigned SNOOP_ADDR_WIDTH = 0,
+  parameter int unsigned SNOOP_DATA_WIDTH = 0
 )(
-  input logic clk_i
+  input clk_i
 );
 
-  typedef logic [AXI_ADDR_WIDTH-1:0] addr_t;
-  typedef logic [AXI_DATA_WIDTH-1:0] data_t;
+  typedef logic [SNOOP_ADDR_WIDTH-1:0] addr_t;
+  typedef logic [SNOOP_DATA_WIDTH-1:0] data_t;
 
-  logic ac_valid;
-  logic ac_ready;
-  addr_t ac_addr;
-  ace_pkg::acsnoop_t ac_snoop;
-  ace_pkg::acprot_t ac_prot;
+  addr_t                ac_addr;
+  snoop_pkg::acprot_t   ac_prot;
+  snoop_pkg::acsnoop_t  ac_snoop;
+  logic                 ac_valid;
+  logic                 ac_ready;
 
-  logic cr_valid;
-  logic cr_ready;
-  ace_pkg::crresp_t cr_resp;
+  snoop_pkg::crresp_t     cr_resp;
+  logic                 cr_valid;
+  logic                 cr_ready;
 
-  logic cd_valid;
-  logic cd_ready;
-  data_t cd_data;
-  logic cd_last;
+  data_t                cd_data;
+  logic                 cd_last;
+  logic                 cd_valid;
+  logic                 cd_ready;
 
   modport Master (
-    output ac_valid, ac_addr, ac_snoop, ac_prot, input ac_ready,
-    output cr_ready, input cr_valid, cr_resp,
-    output cd_valid, input cd_ready, cd_data, cd_last
+    input   ac_addr, ac_prot, ac_snoop, ac_valid, output ac_ready,
+    input   cr_ready, output cr_valid, cr_resp,
+    input   cd_ready, output cd_data, cd_last, cd_valid
   );
 
-  modport Slave (
-    input ac_valid, ac_addr, ac_snoop, ac_prot, output ac_ready,
-    input cr_ready, output cr_valid, cr_resp,
-    input cd_valid, output cd_ready, cd_data, cd_last
+ modport Slave (
+    output   ac_addr, ac_prot, ac_snoop, ac_valid, input ac_ready,
+    output   cr_ready, input cr_valid, cr_resp,
+    output   cd_ready, input cd_data, cd_last, cd_valid
   );
+
 
   modport Monitor (
-    input ac_valid, ac_addr, ac_snoop, ac_prot, input ac_ready,
-    input cr_ready, input cr_valid, cr_resp,
-    input cd_valid, input cd_ready, cd_data, cd_last
+    input    ac_addr, ac_prot, ac_snoop, ac_valid, ac_ready,
+             cr_ready, cr_valid, cr_resp,
+             cd_ready, cd_data, cd_last, cd_valid
   );
 
   // pragma translate_off

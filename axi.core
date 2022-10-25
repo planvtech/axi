@@ -13,6 +13,7 @@ filesets:
       # Level 0
       - src/axi_pkg.sv
       - src/ace_pkg.sv
+      - src/snoop_pkg.sv
       # Level 1
       - src/axi_intf.sv
       - src/ace_intf.sv

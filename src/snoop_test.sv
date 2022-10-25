@@ -29,7 +29,7 @@ package snoop_test;
 
   /// The data transferred on a beat on the CR channel.
   class ace_cr_beat;
-    ace_pkg::crresp_t cr_resp    = '0;
+    snoop_pkg::crresp_t cr_resp    = '0;
   endclass
 
   /// The data transferred on a beat on the CD channel.
@@ -235,9 +235,9 @@ package snoop_test;
     ) snoop_driver_t;
     typedef logic [AW-1:0]      addr_t;
     typedef logic [DW-1:0]      data_t;
-    typedef ace_pkg::acsnoop_t  acsnoop_t;
-    typedef ace_pkg::acprot_t   acprot_t;
-    typedef ace_pkg::crresp_t   crresp_t;
+    typedef snoop_pkg::acsnoop_t  acsnoop_t;
+    typedef snoop_pkg::acprot_t   acprot_t;
+    typedef snoop_pkg::crresp_t   crresp_t;
 
     typedef snoop_driver_t::ace_ac_beat_t ace_ac_beat_t;
     typedef snoop_driver_t::ace_cr_beat_t ace_cr_beat_t;
@@ -274,8 +274,8 @@ package snoop_test;
       automatic logic rand_success;
       automatic ace_ac_beat_t ace_ac_beat = new;
       automatic addr_t addr;
-      automatic ace_pkg::acsnoop_t snoop;
-      automatic ace_pkg::acprot_t prot;
+      automatic snoop_pkg::acsnoop_t snoop;
+      automatic snoop_pkg::acprot_t prot;
       automatic int unsigned mem_region_idx;
       automatic mem_region_t mem_region;
 
@@ -583,12 +583,12 @@ module snoop_chan_logger #(
         log_name = $sformatf("./axi_log/%s/read.log", LoggerName);
         fd = $fopen(log_name, "a");
         if (fd) begin
-          log_string = $sformatf("%0t> CR %d RESP: %b, ", 
+          log_string = $sformatf("%0t> CR %d RESP: %b, ",
                           $time, no_r_beat, cr_beat.cr_resp);
           $fdisplay(fd, log_string);
           if (cr_beat.cr_resp.dataTransfer && !cr_beat.cr_resp.error) begin
             cd_beat = cd_queues.pop_front();
-            log_string = $sformatf("%0t> CD %d DATA: %b, ", 
+            log_string = $sformatf("%0t> CD %d DATA: %b, ",
                             $time, no_r_beat, cd_beat.cd_data);
             $fdisplay(fd, log_string);
           end

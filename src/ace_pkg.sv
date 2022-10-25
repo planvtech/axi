@@ -15,15 +15,6 @@
 /// Contains all necessary type definitions, constants, and generally useful functions.
 package ace_pkg;
 
-   // CRRESP
-   typedef struct packed {
-      logic       wasUnique;
-      logic       isShared;
-      logic       passDirty;
-      logic       error;
-      logic       dataTransfer;
-   } crresp_t;
-
    // Support for snoop channels
    typedef logic [3:0] arsnoop_t;
    typedef logic [2:0] awsnoop_t;
@@ -31,20 +22,6 @@ package ace_pkg;
    typedef logic [1:0] domain_t;
    typedef logic [0:0] awunique_t;
    typedef logic [3:0] rresp_t;
-   typedef logic [3:0] acsnoop_t;
-   typedef logic [2:0] acprot_t;
-
-   // AC snoop encoding
-   localparam READ_ONCE = 4'b0000;
-   localparam READ_SHARED = 4'b0001;
-   localparam READ_CLEAN = 4'b0010;
-   localparam READ_NOT_SHARED_DIRTY = 4'b0011;
-   localparam READ_UNIQUE = 4'b0111;
-   localparam CLEAN_SHARED = 4'b1000;
-   localparam CLEAN_INVALID = 4'b1001;
-   localparam MAKE_INVALID = 4'b1101;
-   localparam DVM_COMPLETE = 4'b1110;
-   localparam DVM_MESSAGE = 4'b1111;
 
   /// Slice on Demux AW channel.
   localparam logic [9:0] DemuxAw = (1 << 9);
@@ -66,7 +43,7 @@ package ace_pkg;
   localparam logic [9:0] MuxAr   = (1 << 1);
   /// Slice on Mux R channel.
   localparam logic [9:0] MuxR    = (1 << 0);
-  /// Latency configuration for `axi_xbar`.
+  /// Latency configuration for `ace_xbar`.
   typedef enum logic [9:0] {
     NO_LATENCY    = 10'b000_00_000_00,
     CUT_SLV_AX    = DemuxAw | DemuxAr,
@@ -90,5 +67,8 @@ package ace_pkg;
     int unsigned   AxiAddrWidth;
     int unsigned   AxiDataWidth;
   } ccu_cfg_t;
+
+ /// transaction type
+  typedef enum logic[2:0] {READ_NO_SNOOP, READ_ONCE, READ_SHARED, CLEAN_INVALID, CLEAN_UNIQUE, WRITE_NO_SNOOP, WRITE_BACK} ace_trs_t;
 
 endpackage
