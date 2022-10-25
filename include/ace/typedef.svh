@@ -118,7 +118,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Usage Example:
 // `SNOOP_TYPEDEF_AC_CHAN_T(snoop_ac_t, snoop_addr_t)
-// 'SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, snoop_data_t)              
+// 'SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, snoop_data_t)
 // `SNOOP_TYPEDEF_REQ_T(snoop_req_t, snoop_ac_t)
 // `SNOOP_TYPEDEF_RESP_T(snoop_resp_t, snoop_cd_t, snoop_cr_t)
 `define SNOOP_TYPEDEF_AC_CHAN_T(ac_chan_t, addr_t)              \
@@ -133,9 +133,7 @@
     logic                 last;                                 \
   } cd_chan_t;
 `define SNOOP_TYPEDEF_CR_CHAN_T(cr_chan_t)                      \
-  typedef struct packed {                                       \
-    snoop_pkg::crresp_t     resp;                                 \
-  } cr_chan_t;
+   typedef snoop_pkg::crresp_t     cr_chan_t;
 `define SNOOP_TYPEDEF_REQ_T(req_t, ac_chan_t)      \
   typedef struct packed {                                       \
     logic     ac_valid;                                         \
@@ -149,7 +147,7 @@
     logic     cd_valid;                                         \
     cd_chan_t cd;                                               \
     logic     cr_valid;                                         \
-    cr_chan_t cr;                                               \
+    cr_chan_t cr_resp;                                          \
   } resp_t;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

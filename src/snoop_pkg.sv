@@ -15,14 +15,14 @@
 /// Contains all necessary type definitions, constants, and generally useful functions.
 package snoop_pkg;
 
-   // CRRESP
-   typedef struct packed {
-      logic       wasUnique;
-      logic       isShared;
-      logic       passDirty;
-      logic       error;
-      logic       dataTransfer;
-   } crresp_t;
+  // CRRESP
+  typedef struct packed {
+    logic        wasUnique;
+    logic        isShared;
+    logic        passDirty;
+    logic        error;
+    logic        dataTransfer;
+  } crresp_t;
 
    /// Support for snoop channels
    typedef logic [3:0] acsnoop_t;

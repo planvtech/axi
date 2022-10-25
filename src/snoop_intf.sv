@@ -35,8 +35,6 @@ interface SNOOP_BUS #(
   logic                 cd_valid;
   logic                 cd_ready;
 
-
-
   modport Master (
     input   ac_addr, ac_prot, ac_snoop, ac_valid, output ac_ready,
     input   cr_ready, output cr_valid, cr_resp,
@@ -57,7 +55,6 @@ interface SNOOP_BUS #(
   );
 
 endinterface
-
 
 /// A clocked SNOOP interface for use in design verification.
 interface SNOOP_BUS_DV #(
@@ -85,8 +82,6 @@ interface SNOOP_BUS_DV #(
   logic                 cd_valid;
   logic                 cd_ready;
 
-
-
   modport Master (
     input   ac_addr, ac_prot, ac_snoop, ac_valid, output ac_ready,
     input   cr_ready, output cr_valid, cr_resp,
@@ -113,14 +108,15 @@ interface SNOOP_BUS_DV #(
   assert property (@(posedge clk_i) (ac_valid && !ac_ready |=> $stable(ac_addr)));
   assert property (@(posedge clk_i) (ac_valid && !ac_ready |=> $stable(ac_snoop)));
   assert property (@(posedge clk_i) (ac_valid && !ac_ready |=> $stable(ac_prot)));
+  assert property (@(posedge clk_i) (ac_valid && !ac_ready |=> ac_valid));
   // CR
   assert property (@(posedge clk_i) (cr_valid && !cr_ready |=> $stable(cr_resp)));
+  assert property (@(posedge clk_i) (cr_valid && !cr_ready |=> cr_valid));
   // CD
   assert property (@(posedge clk_i) (cd_valid && !cd_ready |=> $stable(cd_data)));
   assert property (@(posedge clk_i) (cd_valid && !cd_ready |=> $stable(cd_last)));
+  assert property (@(posedge clk_i) (cd_valid && !cd_ready |=> cd_valid));
   `endif
   // pragma translate_on
 
 endinterface
-
-
