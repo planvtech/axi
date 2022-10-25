@@ -133,9 +133,7 @@
     logic                 last;                                 \
   } cd_chan_t;
 `define SNOOP_TYPEDEF_CR_CHAN_T(cr_chan_t)                      \
-  typedef struct packed {                                       \
-    snoop_pkg::crresp_t     resp;                                 \
-  } cr_chan_t;
+   typedef snoop_pkg::crresp_t     cr_chan_t;
 `define SNOOP_TYPEDEF_REQ_T(req_t, ac_chan_t)      \
   typedef struct packed {                                       \
     logic     ac_valid;                                         \
@@ -149,7 +147,7 @@
     logic     cd_valid;                                         \
     cd_chan_t cd;                                               \
     logic     cr_valid;                                         \
-    cr_chan_t cr;                                               \
+    cr_chan_t cr_resp;                                          \
   } resp_t;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
