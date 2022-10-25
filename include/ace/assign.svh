@@ -36,7 +36,7 @@
   __opt_as __lhs``__lhs_sep``region = __rhs``__rhs_sep``region;     \
   __opt_as __lhs``__lhs_sep``atop   = __rhs``__rhs_sep``atop;       \
   __opt_as __lhs``__lhs_sep``user   = __rhs``__rhs_sep``user;       \
-  __opt_as __lhs``__lhs_sep``awsnoop   = __rhs``__rhs_sep``awsnoop; \
+  __opt_as __lhs``__lhs_sep``snoop   = __rhs``__rhs_sep``snoop; \
   __opt_as __lhs``__lhs_sep``bar   = __rhs``__rhs_sep``bar;         \
   __opt_as __lhs``__lhs_sep``domain   = __rhs``__rhs_sep``domain;   \
   __opt_as __lhs``__lhs_sep``awunique   = __rhs``__rhs_sep``awunique;
@@ -54,9 +54,9 @@
   __opt_as __lhs``__lhs_sep``qos    = __rhs``__rhs_sep``qos;        \
   __opt_as __lhs``__lhs_sep``region = __rhs``__rhs_sep``region;     \
   __opt_as __lhs``__lhs_sep``user   = __rhs``__rhs_sep``user;       \
-  __opt_as __lhs``__lhs_sep``arsnoop = __rhs``__rhs_sep``arsnoop;   \
+  __opt_as __lhs``__lhs_sep``snoop = __rhs``__rhs_sep``snoop;   \
   __opt_as __lhs``__lhs_sep``bar = __rhs``__rhs_sep``bar;           \
-  __opt_as __lhs``__lhs_sep``domain = __rhs``__rhs_sep``domain;     
+  __opt_as __lhs``__lhs_sep``domain = __rhs``__rhs_sep``domain;
 `define __ACE_TO_R(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep)    \
   __opt_as __lhs``__lhs_sep``id     = __rhs``__rhs_sep``id;         \
   __opt_as __lhs``__lhs_sep``data   = __rhs``__rhs_sep``data;       \
@@ -71,7 +71,9 @@
   __opt_as __lhs.b_ready = __rhs.b_ready;                           \
   `__ACE_TO_AR(__opt_as, __lhs.ar, __lhs_sep, __rhs.ar, __rhs_sep)  \
   __opt_as __lhs.ar_valid = __rhs.ar_valid;                         \
-  __opt_as __lhs.r_ready = __rhs.r_ready;
+  __opt_as __lhs.r_ready = __rhs.r_ready;                           \
+  __opt_as __lhs.wack = __rhs.wack;                                 \
+  __opt_as __lhs.rack = __rhs.rack;
 `define __ACE_TO_RESP(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep) \
   __opt_as __lhs.aw_ready = __rhs.aw_ready;                         \
   __opt_as __lhs.ar_ready = __rhs.ar_ready;                         \
@@ -114,7 +116,10 @@
   `AXI_ASSIGN_W(slv, mst)     \
   `AXI_ASSIGN_B(mst, slv)     \
   `ACE_ASSIGN_AR(slv, mst)    \
-  `ACE_ASSIGN_R(mst, slv)
+  `ACE_ASSIGN_R(mst, slv)     \
+  assign slv.wack = mst.wack; \
+  assign slv.rack = mst.rack;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -141,7 +146,9 @@
   assign mon_dv.ar_ready  = axi_if.ar_ready;        \
   `__ACE_TO_R(assign, mon_dv.r, _, axi_if.r, _)     \
   assign mon_dv.r_valid   = axi_if.r_valid;         \
-  assign mon_dv.r_ready   = axi_if.r_ready;
+  assign mon_dv.r_ready   = axi_if.r_ready;         \
+  assign mon_dv.wack   = axi_if.wack;               \
+  assign mon_dv.rack   = axi_if.rack;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -293,13 +300,13 @@
 // processes (with `__opt_as` void).
 `define __SNOOP_TO_AC(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep)       \
   __opt_as __lhs``__lhs_sep``addr      = __rhs``__rhs_sep``addr;          \
-  __opt_as __lhs``__lhs_sep``acsnoop   = __rhs``__rhs_sep``acsnoop;       \
-  __opt_as __lhs``__lhs_sep``acprot    = __rhs``__rhs_sep``acprot;          
+  __opt_as __lhs``__lhs_sep``snoop   = __rhs``__rhs_sep``snoop;       \
+  __opt_as __lhs``__lhs_sep``prot    = __rhs``__rhs_sep``prot;
 `define __SNOOP_TO_CD(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep)       \
   __opt_as __lhs``__lhs_sep``data   = __rhs``__rhs_sep``data;             \
-  __opt_as __lhs``__lhs_sep``last   = __rhs``__rhs_sep``last;           
+  __opt_as __lhs``__lhs_sep``last   = __rhs``__rhs_sep``last;
 `define __SNOOP_TO_CR(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep)       \
-  __opt_as __lhs``__lhs_sep``resp   = __rhs``__rhs_sep``resp;     
+  __opt_as __lhs``__lhs_sep``resp   = __rhs``__rhs_sep``resp;
 `define __SNOOP_TO_REQ(__opt_as, __lhs, __lhs_sep, __rhs, __rhs_sep)      \
   `__SNOOP_TO_AC(__opt_as, __lhs.ac, __lhs_sep, __rhs.ac, __rhs_sep)      \
   __opt_as __lhs.ac_valid = __rhs.ac_valid;                               \
@@ -310,7 +317,7 @@
   __opt_as __lhs.cd_valid = __rhs.cd_valid;                               \
   `__SNOOP_TO_CD(__opt_as, __lhs.cd, __lhs_sep, __rhs.cd, __rhs_sep)      \
   __opt_as __lhs.cr_valid = __rhs.cr_valid;                               \
-  `__SNOOP_TO_CR(__opt_as, __lhs.cr, __lhs_sep, __rhs.cr, __rhs_sep)
+  __opt_as __lhs.cr_resp = __rhs.cr_resp;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -338,11 +345,11 @@
 `define SNOOP_ASSIGN_CR(dst, src)                \
   `__SNOOP_TO_CR(assign, dst.cr, _, src.cr, _)     \
   assign dst.cr_valid  = src.cr_valid;          \
-  assign src.cr_ready  = dst.cr_ready;  
+  assign src.cr_ready  = dst.cr_ready;
 `define SNOOP_ASSIGN(slv, mst)  \
   `SNOOP_ASSIGN_AC(slv, mst)    \
   `SNOOP_ASSIGN_CD(slv, mst)    \
-  `SNOOP_ASSIGN_CR(slv, mst)    
+  `SNOOP_ASSIGN_CR(slv, mst)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // The channel assignment `SNOOP_ASSIGN_MONITOR(mon_dv, snoop_if)` assigns all signals from `snoop_if`
 // to the `mon_dv` interface.
@@ -357,7 +364,7 @@
   assign mon_dv.cd_valid   = snoop_if.cd_valid;         \
   assign mon_dv.cd_ready   = snoop_if.cd_ready;         \
   `__SNOOP_TO_CR(assign, mon_dv.cr, _, snoop_if.cr, _)     \
-  assign mon_dv.cr_valid   = snoop_if.cr_valid;         
+  assign mon_dv.cr_valid   = snoop_if.cr_valid;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Setting an interface from channel or request/response structs inside a process.
@@ -375,9 +382,9 @@
 // always_comb begin
 //   `SNOOP_SET_FROM_REQ(my_if, my_req_struct)
 // end
-`define SNOOP_SET_FROM_AW(snoop_if, ac_struct)      `__SNOOP_TO_AC(, snoop_if.ac, _, ac_struct, .)
-`define SNOOP_SET_FROM_AR(snoop_if, cd_struct)      `__SNOOP_TO_CD(, snoop_if.cd, _, cd_struct, .)
-`define SNOOP_SET_FROM_R(snoop_if, cr_struct)        `__SNOOP_TO_CR(, snoop_if.cr, _, cr_struct, .)
+`define SNOOP_SET_FROM_AC(snoop_if, ac_struct)      `__SNOOP_TO_AC(, snoop_if.ac, _, ac_struct, .)
+`define SNOOP_SET_FROM_CD(snoop_if, cd_struct)      `__SNOOP_TO_CD(, snoop_if.cd, _, cd_struct, .)
+`define SNOOP_SET_FROM_CR(snoop_if, cr_struct)        `__SNOOP_TO_CR(, snoop_if.cr, _, cr_struct, .)
 `define SNOOP_SET_FROM_REQ(snoop_if, req_struct)    `__SNOOP_TO_REQ(, snoop_if, _, req_struct, .)
 `define SNOOP_SET_FROM_RESP(snoop_if, resp_struct)  `__SNOOP_TO_RESP(, snoop_if, _, resp_struct, .)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -387,17 +394,17 @@
 //
 // The channel macros `SNOOP_ASSIGN_FROM_XX(snoop_if, xx_struct)` assign the payload signals of the
 // `snoop_if` interface from the signals in `xx_struct`.  They do not assign the handshake signals.
-// The request macro `SNOOP_ASSIGN_FROM_REQ(snoop_if, req_struct)` assigns all request channels (AC) 
-// and the request-side handshake signals (AC valid and CD and CR ready) of the `snoop_if` interface 
+// The request macro `SNOOP_ASSIGN_FROM_REQ(snoop_if, req_struct)` assigns all request channels (AC)
+// and the request-side handshake signals (AC valid and CD and CR ready) of the `snoop_if` interface
 // from the signals in `req_struct`.The response macro `SNOOP_ASSIGN_FROM_RESP(snoop_if, resp_struct)`
-// assigns both response channels (CD and CR) and the response-side handshake signals (CD and CR valid 
+// assigns both response channels (CD and CR) and the response-side handshake signals (CD and CR valid
 // and AC ready) of the `snoop_if` interface from the signals in `resp_struct`.
 //
 // Usage Example:
 // `SNOOP_ASSIGN_FROM_REQ(my_if, my_req_struct)
-`define SNOOP_ASSIGN_FROM_AW(snoop_if, ac_struct)     `__SNOOP_TO_AC(assign, snoop_if.ac, _, ac_struct, .)
-`define SNOOP_ASSIGN_FROM_AR(snoop_if, cd_struct)     `__SNOOP_TO_CD(assign, snoop_if.cd, _, cd_struct, .)
-`define SNOOP_ASSIGN_FROM_R(snoop_if, cr_struct)       `__SNOOP_TO_CR(assign, snoop_if.cr, _, cr_struct, .)
+`define SNOOP_ASSIGN_FROM_AC(snoop_if, ac_struct)     `__SNOOP_TO_AC(assign, snoop_if.ac, _, ac_struct, .)
+`define SNOOP_ASSIGN_FROM_CD(snoop_if, cd_struct)     `__SNOOP_TO_CD(assign, snoop_if.cd, _, cd_struct, .)
+`define SNOOP_ASSIGN_FROM_CR(snoop_if, cr_struct)       `__SNOOP_TO_CR(assign, snoop_if.cr, _, cr_struct, .)
 `define SNOOP_ASSIGN_FROM_REQ(snoop_if, req_struct)   `__SNOOP_TO_REQ(assign, snoop_if, _, req_struct, .)
 `define SNOOP_ASSIGN_FROM_RESP(snoop_if, resp_struct) `__SNOOP_TO_RESP(assign, snoop_if, _, resp_struct, .)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -420,9 +427,9 @@
 // always_comb begin
 //   `SNOOP_SET_TO_REQ(my_req_struct, my_if)
 // end
-`define SNOOP_SET_TO_AW(ac_struct, snoop_if)     `__SNOOP_TO_AC(, ac_struct, ., snoop_if.ac, _)
-`define SNOOP_SET_TO_AR(cd_struct, snoop_if)     `__SNOOP_TO_CD(, cd_struct, ., snoop_if.cd, _)
-`define SNOOP_SET_TO_R(cr_struct, snoop_if)       `__SNOOP_TO_CR(, cr_struct, ., snoop_if.cr, _)
+`define SNOOP_SET_TO_AC(ac_struct, snoop_if)     `__SNOOP_TO_AC(, ac_struct, ., snoop_if.ac, _)
+`define SNOOP_SET_TO_CD(cd_struct, snoop_if)     `__SNOOP_TO_CD(, cd_struct, ., snoop_if.cd, _)
+`define SNOOP_SET_TO_CR(cr_struct, snoop_if)       `__SNOOP_TO_CR(, cr_struct, ., snoop_if.cr, _)
 `define SNOOP_SET_TO_REQ(req_struct, snoop_if)   `__SNOOP_TO_REQ(, req_struct, ., snoop_if, _)
 `define SNOOP_SET_TO_RESP(resp_struct, snoop_if) `__SNOOP_TO_RESP(, resp_struct, ., snoop_if, _)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -435,7 +442,7 @@
 // payload signals of that channel in the `snoop_if` interface.  They do not assign the handshake
 // signals.
 // The request macro `SNOOP_ASSIGN_TO_REQ(snoop_if, req_struct)` assigns all signals of `req_struct`
-// (i.e., request channel (AC) payload and request-side handshake signals (AC valid and CD and CR ready)) 
+// (i.e., request channel (AC) payload and request-side handshake signals (AC valid and CD and CR ready))
 // to the signals in the `snoop_if` interface.
 // The response macro `SNOOP_ASSIGN_TO_RESP(snoop_if, resp_struct)` assigns all signals of `resp_struct`
 // (i.e., response channel (CD and CR) payload and response-side handshake signals (CD and CR valid and
@@ -443,9 +450,9 @@
 //
 // Usage Example:
 // `SNOOP_ASSIGN_TO_REQ(my_req_struct, my_if)
-`define SNOOP_ASSIGN_TO_AW(aw_struct, snoop_if)     `__SNOOP_TO_AW(assign, aw_struct, ., snoop_if.aw, _)
-`define SNOOP_ASSIGN_TO_AR(ar_struct, snoop_if)     `__SNOOP_TO_AR(assign, ar_struct, ., snoop_if.ar, _)
-`define SNOOP_ASSIGN_TO_R(r_struct, snoop_if)       `__SNOOP_TO_R(assign, r_struct, ., snoop_if.r, _)
+`define SNOOP_ASSIGN_TO_AC(aw_struct, snoop_if)     `__SNOOP_TO_AC(assign, aw_struct, ., snoop_if.aw, _)
+`define SNOOP_ASSIGN_TO_CD(ar_struct, snoop_if)     `__SNOOP_TO_CD(assign, ar_struct, ., snoop_if.ar, _)
+`define SNOOP_ASSIGN_TO_CR(r_struct, snoop_if)       `__SNOOP_TO_CR(assign, r_struct, ., snoop_if.r, _)
 `define SNOOP_ASSIGN_TO_REQ(req_struct, snoop_if)   `__SNOOP_TO_REQ(assign, req_struct, ., snoop_if, _)
 `define SNOOP_ASSIGN_TO_RESP(resp_struct, snoop_if) `__SNOOP_TO_RESP(assign, resp_struct, ., snoop_if, _)
 ////////////////////////////////////////////////////////////////////////////////////////////////////

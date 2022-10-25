@@ -15,7 +15,7 @@
 /// Contains all necessary type definitions, constants, and generally useful functions.
 package ace_pkg;
 
-   /// Support for snoop channels
+   // Support for snoop channels
    typedef logic [3:0] arsnoop_t;
    typedef logic [2:0] awsnoop_t;
    typedef logic [1:0] bar_t;

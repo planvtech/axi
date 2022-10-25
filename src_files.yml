@@ -11,8 +11,12 @@ axi:
     # levels 1 and 0, etc. Files within a level are ordered alphabetically.
     # Level 0
     - src/axi_pkg.sv
+    - src/ace_pkg.sv
+    - src/snoop_pkg.sv
     # Level 1
     - src/axi_intf.sv
+    - src/ace_intf.sv
+    - src/snoop_intf.sv
     # Level 2
     - src/axi_atop_filter.sv
     - src/axi_burst_splitter.sv
@@ -54,10 +58,13 @@ axi:
     - src/axi_to_mem_banked.sv
     - src/axi_to_mem_interleaved.sv
     - src/axi_to_mem_split.sv
+    - src/ace_trs_dec.sv
     # Level 4
     - src/axi_iw_converter.sv
     - src/axi_lite_xbar.sv
     - src/axi_xbar.sv
+    - src/ace_xbar.sv
+    - src/ace_ccu_top.sv
     # Level 5
     - src/axi_xp.sv
 
@@ -67,6 +74,7 @@ axi_sim:
     - src/axi_dumper.sv
     - src/axi_sim_mem.sv
     - src/axi_test.sv
+    - src/ace_test.sv
   flags:
     - skip_synthesis
     - only_local
