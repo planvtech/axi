@@ -353,7 +353,7 @@ module tb_ace_ccu_top #(
     assign master_monitor_dv[i].aw_user     = master[i].aw_user  ;
     assign master_monitor_dv[i].aw_valid    = master[i].aw_valid ;
     assign master_monitor_dv[i].aw_ready    = master[i].aw_ready ;
-    assign master_monitor_dv[i].aw_awsnoop  = master[i].aw_awsnoop;
+    assign master_monitor_dv[i].aw_snoop    = master[i].aw_snoop;
     assign master_monitor_dv[i].aw_bar      = master[i].aw_bar ;
     assign master_monitor_dv[i].aw_domain   = master[i].aw_domain ;
     assign master_monitor_dv[i].aw_awunique = master[i].aw_awunique ;
@@ -381,7 +381,7 @@ module tb_ace_ccu_top #(
     assign master_monitor_dv[i].ar_user     = master[i].ar_user  ;
     assign master_monitor_dv[i].ar_valid    = master[i].ar_valid ;
     assign master_monitor_dv[i].ar_ready    = master[i].ar_ready ;
-    assign master_monitor_dv[i].ar_arsnoop  = master[i].ar_arsnoop ;
+    assign master_monitor_dv[i].ar_snoop    = master[i].ar_snoop ;
     assign master_monitor_dv[i].ar_bar      = master[i].ar_bar ;
     assign master_monitor_dv[i].ar_domain   = master[i].ar_domain ;
     assign master_monitor_dv[i].r_id        = master[i].r_id     ;
