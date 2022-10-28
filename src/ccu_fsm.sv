@@ -61,7 +61,7 @@ module ccu_fsm
         case(state_q)
         IDLE: begin
             if(ccu_req_i.ar_valid ) begin
-                state_d = DECODE;                   
+                state_d = IDLE;                   
             end else if (ccu_req_i.aw_valid) begin
                 state_d = SEND_INVALID;
             end else begin
@@ -92,7 +92,7 @@ module ccu_fsm
         WAIT_RESP_R: begin
             $display("WAIT_RESP_R %b", mst_resp_cr_valid);
             // wait for all snoop masters to assert CR valid 
-            if (mst_resp_cr_valid != 'b1) begin
+            if (mst_resp_cr_valid != '1) begin
                 state_d = WAIT_RESP_R;
             end else if(data_available != 0) begin
                 state_d = SEND_DATA;
@@ -104,7 +104,7 @@ module ccu_fsm
         SEND_DATA: begin
             $display("SEND_DATA");
 			// wait for initiating master to de-assert r_ready
-            if(ccu_req_i.r_ready != 'b0) begin
+            if(ccu_req_i.r_ready != '0) begin
                 state_d = SEND_DATA;
             end else begin
                 state_d = IDLE;
@@ -114,7 +114,7 @@ module ccu_fsm
         SEND_AXI_REQ: begin
             $display("SEND_AXI_REQ");
 			// wait for responding slave to de-assert ar_ready
-            if(ccu_resp_i.ar_ready !='b0) begin
+            if(ccu_resp_i.ar_ready !='0) begin
                 state_d = SEND_AXI_REQ;
             end else begin
                 state_d = READ_MEM;
@@ -134,7 +134,7 @@ module ccu_fsm
         SEND_INVALID: begin
             $display("SEND_INVALID");
 			// wait for all snoop masters to de-assert AC ready 
-            if (mst_resp_ac_ready != 'b0) begin
+            if (mst_resp_ac_ready != '0) begin
                 state_d = SEND_INVALID;
             end else begin
                 state_d = WAIT_RESP_W;
@@ -162,122 +162,127 @@ module ccu_fsm
 // output block
 always_comb begin : ccu_output_block
     case(state_q) 
-    IDLE: begin
-        ccu_req_o           =   'b0;
-        ccu_resp_o          =   'b0;
-        s2m_req_o           =   'b0;
-        ccu_resp_o.ar_ready =   'b1;
-        ccu_resp_o.aw_ready =   'b1;
-        ccu_resp_o.w_ready  =   'b1;
-    end
+        IDLE: begin
+            ccu_req_o           =   '0;
+            ccu_resp_o          =   '0;
+            s2m_req_o           =   '0;
+            ccu_resp_o.ar_ready =   'b1;
+            ccu_resp_o.aw_ready =   'b1;
+            ccu_resp_o.w_ready  =   'b1;
+        end
 
-    DECODE: begin
-        ccu_req_o           =   'b0;
-        ccu_resp_o          =   'b0;
-        s2m_req_o           =   'b0;
-    end
+        DECODE: begin
+            ccu_req_o           =   '0;
+            ccu_resp_o          =   '0;
+            s2m_req_o           =   '0;
+        end
 
-    SEND_READ: begin
-        ccu_req_o           =   'b0;
-        ccu_resp_o          =   'b0;
-        // send request to snooping masters
-        s2m_req_o.ac.addr   =   ccu_req_holder.ar.addr;
-        s2m_req_o.ac.prot   =   ccu_req_holder.ar.prot;
-        s2m_req_o.ac.snoop  =   ccu_req_holder.ar.snoop;
-        s2m_req_o.ac_valid  =   'b1;
-        s2m_req_o.cd_ready  =   'b1;
-        s2m_req_o.cr_ready  =   'b1;
-    end
+        SEND_READ: begin
+            ccu_req_o           =   '0;
+            ccu_resp_o          =   '0;
+            // send request to snooping masters
+            s2m_req_o.ac.addr   =   ccu_req_holder.ar.addr;
+            s2m_req_o.ac.prot   =   ccu_req_holder.ar.prot;
+            s2m_req_o.ac.snoop  =   ccu_req_holder.ar.snoop;
+            s2m_req_o.ac_valid  =   'b1;
+            s2m_req_o.cd_ready  =   'b1;
+            s2m_req_o.cr_ready  =   'b1;
+        end
 
-    WAIT_RESP_R:
-    WAIT_RESP_W:
-     begin
-        ccu_req_o           =   'b0;
-        ccu_resp_o          =   'b0;
-        s2m_req_o           =   'b0;
-        s2m_req_o.cd_ready  =   'b1;
-        s2m_req_o.cr_ready  =   'b1;
-    end
+        WAIT_RESP_R:
+        WAIT_RESP_W:
+        begin
+            ccu_req_o           =   '0;
+            ccu_resp_o          =   '0;
+            s2m_req_o           =   '0;
+            s2m_req_o.cd_ready  =   'b1;
+            s2m_req_o.cr_ready  =   'b1;
+        end
 
-    SEND_DATA: begin
-        ccu_req_o           =   'b0;
-        s2m_req_o           =   'b0;
-        // response to intiating master
-        ccu_resp_o.aw_ready =   'b1;
-        ccu_resp_o.ar_ready =   'b1;
-        ccu_resp_o.w_ready  =   'b1;
-        ccu_resp_o.b_valid  =   'b0;
-        ccu_resp_o.b        =   'b0;
-        ccu_resp_o.r_valid  =   'b1;
-        ccu_resp_o.r.id     =   ccu_req_holder.ar.id;
-        ccu_resp_o.r.data   =   m2s_resp_i[0].cd.data;
-        ccu_resp_o.r.resp   =   'b0;
-        ccu_resp_o.r.last   =   m2s_resp_i[0].cd.last;
-        ccu_resp_o.r.user   =   ccu_req_holder.ar.user;
-    end
+        SEND_DATA: begin
+            ccu_req_o           =   '0;
+            s2m_req_o           =   '0;
+            // response to intiating master
+            ccu_resp_o.aw_ready =   'b1;
+            ccu_resp_o.ar_ready =   'b1;
+            ccu_resp_o.w_ready  =   'b1;
+            ccu_resp_o.b_valid  =   'b0;
+            ccu_resp_o.b        =   '0;
+            ccu_resp_o.r_valid  =   'b1;
+            ccu_resp_o.r.id     =   ccu_req_holder.ar.id;
+            ccu_resp_o.r.data   =   m2s_resp_i[0].cd.data;
+            ccu_resp_o.r.resp   =   '0;
+            ccu_resp_o.r.last   =   m2s_resp_i[0].cd.last;
+            ccu_resp_o.r.user   =   ccu_req_holder.ar.user;
+        end
 
-    SEND_AXI_REQ: begin
-        s2m_req_o           =   'b0;
-        ccu_resp_o          =   'b0;
-        // forward request to slave (RAM)
-        ccu_req_o.ar_valid  =   1'b1;
-        ccu_req_o.ar        =   ccu_req_holder.ar;
-        ccu_req_o.aw_valid  =   1'b0;
-        ccu_req_o.aw        =   ccu_req_holder.aw;
-        ccu_req_o.w_valid   =   1'b0;
-        ccu_req_o.w         =   'b0;
-        ccu_req_o.b_ready   =   'b1;
-        ccu_req_o.r_ready   =   1'b1;
-    end
+        SEND_AXI_REQ: begin
+            s2m_req_o           =   'b0;
+            ccu_resp_o          =   'b0;
+            // forward request to slave (RAM)
+            ccu_req_o.ar_valid  =   1'b1;
+            ccu_req_o.ar        =   ccu_req_holder.ar;
+            ccu_req_o.aw_valid  =   1'b0;
+            ccu_req_o.aw        =   ccu_req_holder.aw;
+            ccu_req_o.w_valid   =   'b0;
+            ccu_req_o.w         =   'b0;
+            ccu_req_o.b_ready   =   'b0;
+            ccu_req_o.r_ready   =   'b0;
+        end
 
-    READ_MEM: begin
-        s2m_req_o           =   'b0;
-        ccu_req_o           =   'b0;
-        // forward reponse from slave to intiating master
-        ccu_resp_o.aw_ready =   'b1;
-        ccu_resp_o.ar_ready =   'b1;
-        ccu_resp_o.w_ready  =   'b1;
-        ccu_resp_o.b_valid  =   'b0;
-        ccu_resp_o.b        =   'b0;
-        ccu_resp_o.r_valid  =   'b1;
-        ccu_resp_o.r        =   ccu_resp_i.r;
-    end
+        READ_MEM: begin
+            s2m_req_o           =   'b0;
+            ccu_req_o.ar_valid  =   'b1;
+            ccu_req_o.ar        =   'b0;
+            ccu_req_o.aw_valid  =   'b0;
+            ccu_req_o.aw        =   'b0;
+            ccu_req_o.w_valid   =   'b0;
+            ccu_req_o.w         =   'b0;
+            ccu_req_o.b_ready   =   'b1;
+            ccu_req_o.r_ready   =   'b1;
+            // forward reponse from slave to intiating master
+            ccu_resp_o.aw_ready =   'b1;
+            ccu_resp_o.ar_ready =   'b1;
+            ccu_resp_o.w_ready  =   'b1;
+            ccu_resp_o.b_valid  =   'b0;
+            ccu_resp_o.b        =   '0;
+            ccu_resp_o.r_valid  =   'b1;
+            ccu_resp_o.r        =   ccu_resp_i.r;
+        end
 
-    SEND_INVALID:begin
-        ccu_req_o           =   'b0;
-        ccu_resp_o          =   'b0;
-        s2m_req_o.ac.addr   =   ccu_req_holder.ar_valid ? ccu_req_holder.ar.addr : ccu_req_holder.aw.addr;
-        s2m_req_o.ac.prot   =   ccu_req_holder.ar_valid ? ccu_req_holder.ar.prot : ccu_req_holder.aw.prot;
-        s2m_req_o.ac.snoop  =   'b1001;
-        s2m_req_o.ac_valid  =   'b1;
-        s2m_req_o.cd_ready  =   'b1;
-        s2m_req_o.cr_ready  =   'b1;
-    end 
+        SEND_INVALID:begin
+            ccu_req_o           =   '0;
+            ccu_resp_o          =   '0;
+            s2m_req_o.ac.addr   =   ccu_req_holder.ar_valid ? ccu_req_holder.ar.addr : ccu_req_holder.aw.addr;
+            s2m_req_o.ac.prot   =   ccu_req_holder.ar_valid ? ccu_req_holder.ar.prot : ccu_req_holder.aw.prot;
+            s2m_req_o.ac.snoop  =   'b1001;
+            s2m_req_o.ac_valid  =   'b1;
+            s2m_req_o.cd_ready  =   'b1;
+            s2m_req_o.cr_ready  =   'b1;
+        end 
 
-    SEND_ACK:begin
-        s2m_req_o           =   'b0;
-        ccu_req_o           =   'b0;
-        // forward reponse from slave to intiating master
-        ccu_resp_o.aw_ready =   'b1;
-        ccu_resp_o.ar_ready =   'b1;
-        ccu_resp_o.w_ready  =   'b1;
-        ccu_resp_o.b_valid  =   ccu_req_holder.aw_valid;
-        ccu_resp_o.b.id     =   ccu_req_holder.aw.id;
-        ccu_resp_o.b.user   =   ccu_req_holder.aw.user;
-        ccu_resp_o.b.resp   =   'b0;
+        SEND_ACK:begin
+            s2m_req_o           =   '0;
+            ccu_req_o           =   '0;
+            // forward reponse from slave to intiating master
+            ccu_resp_o.aw_ready =   'b1;
+            ccu_resp_o.ar_ready =   'b1;
+            ccu_resp_o.w_ready  =   'b1;
+            ccu_resp_o.b_valid  =   ccu_req_holder.aw_valid;
+            ccu_resp_o.b.id     =   ccu_req_holder.aw.id;
+            ccu_resp_o.b.user   =   ccu_req_holder.aw.user;
+            ccu_resp_o.b.resp   =   '0;
 
-        // ccu_resp_o.r_valid  =   'b0;
-        // ccu_resp_o.r.id     =   ccu_req_holder.ar.id;
-        // ccu_resp_o.r.user   =   ccu_req_holder.ar.user;
-        // ccu_resp_o.r.last   =   1'b0;
-        // ccu_resp_o.r.data   =   'hdeadbeef;
-        // ccu_resp_o.r.resp   =   'b0;
-    
-    end 
-
-
+            ccu_resp_o.r_valid  =   'b0;
+            ccu_resp_o.r.id     =   ccu_req_holder.ar.id;
+            ccu_resp_o.r.user   =   ccu_req_holder.ar.user;
+            ccu_resp_o.r.last   =   1'b0;
+            ccu_resp_o.r.data   =   'hdeadbeef;
+            ccu_resp_o.r.resp   =   '0;
+        
+        end 
     endcase
-    end
+end
 
 // latch addresses from 
 always_ff @(posedge clk_i , negedge rst_ni) begin
