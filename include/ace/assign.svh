@@ -348,8 +348,8 @@
   assign src.cr_ready  = dst.cr_ready;
 `define SNOOP_ASSIGN(slv, mst)  \
   `SNOOP_ASSIGN_AC(slv, mst)    \
-  `SNOOP_ASSIGN_CD(slv, mst)    \
-  `SNOOP_ASSIGN_CR(slv, mst)
+  `SNOOP_ASSIGN_CD(mst, slv)    \
+  `SNOOP_ASSIGN_CR(mst, slv)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // The channel assignment `SNOOP_ASSIGN_MONITOR(mon_dv, snoop_if)` assigns all signals from `snoop_if`
 // to the `mon_dv` interface.

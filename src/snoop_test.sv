@@ -47,8 +47,8 @@ package snoop_test;
     parameter time TT = 0ns   // stimuli test time
   );
     virtual SNOOP_BUS_DV #(
-      .AXI_ADDR_WIDTH(AW),
-      .AXI_DATA_WIDTH(DW)
+      .SNOOP_ADDR_WIDTH(AW),
+      .SNOOP_DATA_WIDTH(DW)
     ) snoop;
 
     typedef ace_ac_beat #(.AW(AW)) ace_ac_beat_t;
@@ -57,8 +57,8 @@ package snoop_test;
 
     function new(
       virtual SNOOP_BUS_DV #(
-        .AXI_ADDR_WIDTH(AW),
-        .AXI_DATA_WIDTH(DW)
+        .SNOOP_ADDR_WIDTH(AW),
+        .SNOOP_DATA_WIDTH(DW)
       ) snoop
     );
       this.snoop = snoop;
@@ -152,7 +152,7 @@ package snoop_test;
 
     /// Wait for a beat on the CR channel.
     task recv_cr (
-      input ace_cr_beat_t beat
+      output ace_cr_beat_t beat
     );
       snoop.cr_ready <= #TA 1;
       cycle_start();
@@ -165,8 +165,8 @@ package snoop_test;
 
     /// Wait for a beat on the CD channel.
     task recv_cd (
-      input ace_cd_beat_t beat
-    );
+                  output ace_cd_beat_t beat
+                  );
       snoop.cd_ready <= #TA 1;
       cycle_start();
       while (snoop.cd_valid != 1) begin cycle_end(); cycle_start(); end
@@ -254,8 +254,8 @@ package snoop_test;
 
     function new(
       virtual SNOOP_BUS_DV #(
-        .AXI_ADDR_WIDTH(AW),
-        .AXI_DATA_WIDTH(DW)
+        .SNOOP_ADDR_WIDTH(AW),
+        .SNOOP_DATA_WIDTH(DW)
       ) snoop
     );
       this.drv = new(snoop);
@@ -297,9 +297,7 @@ package snoop_test;
       end
 
       // Randomize address
-      forever begin
-        addr  = mem_region.addr_begin;
-      end
+      addr  = mem_region.addr_begin + $urandom(32'h10000);
 
       ace_ac_beat.ac_addr = addr;
       snoop      = $urandom();
@@ -341,8 +339,11 @@ package snoop_test;
     task recv_crs(ref logic ac_done);
       while (!ac_done) begin
         automatic ace_cr_beat_t ace_cr_beat;
+        automatic ace_cd_beat_t ace_cd_beat;
         rand_wait(CR_MIN_WAIT_CYCLES, CR_MAX_WAIT_CYCLES);
         drv.recv_cr(ace_cr_beat);
+        if (!ace_cr_beat.cr_resp.error)
+          drv.recv_cd(ace_cd_beat);
       end
     endtask
 
@@ -363,7 +364,6 @@ package snoop_test;
           ac_done = 1'b1;
         end
         recv_crs(ac_done);
-        recv_cds(ac_done);
       join
     endtask
 
