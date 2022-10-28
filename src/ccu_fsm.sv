@@ -1,5 +1,9 @@
-module ccu_fsm import ace_pkg::*; import snoop_pkg::*; 
+`include "ace/assign.svh"
+`include "ace/typedef.svh"
+
+module ccu_fsm  
 #(
+    parameter int  NoMstPorts           = 4,
     parameter type mst_req_t            = logic,
     parameter type mst_resp_t           = logic,
     parameter type snoop_req_t          = logic,
@@ -9,21 +13,39 @@ module ccu_fsm import ace_pkg::*; import snoop_pkg::*;
     //clock and reset 
     input                               clk_i,
     input                               rst_ni,
-    // Transaction type
-    input ace_pkg::ace_trs_t            ace_trs,
-    // Demux Request In and response out 
-    input  mst_req_t                    m_req_i,
-    output mst_resp_t                   m_resp_o,
+    // CCU Request In and response out 
+    input  mst_req_t                    ccu_req_i,
+    output mst_resp_t                   ccu_resp_o,
     //CCU Request Out and response in 
     output mst_req_t                    ccu_req_o,
-    output mst_resp_t                   ccu_resp_i,
+    input  mst_resp_t                   ccu_resp_i,
     // Snoop channel resuest and response
-    output snoop_req_t                  s2m_req_o,
-    input  snoop_req_t                  m2s_resp_i
+    output snoop_req_t                   s2m_req_o,
+    input  snoop_resp_t [NoMstPorts-1:0] m2s_resp_i
 );
 
-    enum logic [2:0] {IDLE, SEDN_READ, SEND_INVALID, WAIT_RESP, 
-                SEND_ACK, READ_MEM, SEND_DATA} state_d, state_q;
+    enum logic [3:0] {IDLE, DECODE,
+                      SEND_READ, WAIT_RESP_R, SEND_DATA, SEND_AXI_REQ, READ_MEM,
+                      SEND_INVALID, WAIT_RESP_W, SEND_ACK 
+                     } state_d, state_q;
+
+    // snoop resoponse valid
+    logic [NoMstPorts-1:0] mst_resp_cr_valid;
+    // check for availablilty of data
+    logic [NoMstPorts-1:0] data_available;
+    // snoop channel ac received by master
+    logic [NoMstPorts-1:0] mst_resp_ac_ready;
+    // temp request holder
+    mst_req_t              ccu_req_holder; 
+
+
+    // stack snoop reponse valids and data_available
+    for (genvar i = 0; i < NoMstPorts; i++) begin : stack_cr_valid
+        assign mst_resp_cr_valid[i] = 1'b1;//m2s_resp_i[i].cr_valid;
+        assign data_available[i]    = 1'b0;//m2s_resp_i[i].cr_resp[0];
+        assign mst_resp_ac_ready[i] = 1'b0;//m2s_resp_i[i].ac_ready;
+    end 
+
 
     /// Present state block
     always_ff @(posedge clk_i, negedge rst_ni) begin : ccu_present_state
@@ -38,95 +60,234 @@ module ccu_fsm import ace_pkg::*; import snoop_pkg::*;
     always_comb begin : ccu_state_ctrl
         case(state_q)
         IDLE: begin
-            if(ace_trs == C_UNIQUE) begin
+            if(ccu_req_i.ar_valid ) begin
+                state_d = DECODE;                   
+            end else if (ccu_req_i.aw_valid) begin
                 state_d = SEND_INVALID;
-            end else if( ace_trs == R_ONCE || ace_trs == R_SHARED) begin
-                state_d = SEDN_READ;
             end else begin
                 state_d = IDLE;
             end
         end
 
-        SEND_INVALID: begin
-            state_d = WAIT_RESP;
+        // determine if transaction is type of Read or clean-Invalid
+        DECODE: begin
+            $display("DECODE");
+            if(ccu_req_holder.ar.snoop !='b1011) begin
+                state_d = SEND_READ;
+            end else begin
+                state_d = SEND_INVALID;
+            end
         end
 
         SEND_READ: begin
-            state_d = WAIT_RESP;
-        end
-
-        WAIT_RESP: begin
-            // wait for CR Valid from master 
-            if (m2s_resp_i.cr_valid != 1'b1) begin
-                state_d = WAIT_RESP;
+            $display("SEND_READ");
+			// wait for all snoop masters to de-assert AC ready 
+            if (mst_resp_ac_ready != 'b0) begin
+                state_d = SEND_READ;
             end else begin
-                // if CLEANUNIQUE respond to master by sending ack
-                if(ace_trs == C_UNIQUE) begin
-                    state_d = SEND_ACK;
-                end else begin
-                // for read transactions     
-                    if(m2s_resp_i.cr.resp[0]) begin : data_available
-                        // if data available send data else fetch from AXI slave (READ_MEM)
-                        state_d = SEND_DATA;
-                    end else begin : data_not_available
-                        state_d = READ_MEM;
-                    end
-                end
+                state_d = WAIT_RESP_R;
             end
         end
-                    
-        SEND_ACK: begin
-            state_d = IDLE;
+ 
+        WAIT_RESP_R: begin
+            $display("WAIT_RESP_R %b", mst_resp_cr_valid);
+            // wait for all snoop masters to assert CR valid 
+            if (mst_resp_cr_valid != 'b1) begin
+                state_d = WAIT_RESP_R;
+            end else if(data_available != 0) begin
+                state_d = SEND_DATA;
+            end else begin
+                state_d = SEND_AXI_REQ;
+            end
         end
 
         SEND_DATA: begin
-            state_d =IDLE;
+            $display("SEND_DATA");
+			// wait for initiating master to de-assert r_ready
+            if(ccu_req_i.r_ready != 'b0) begin
+                state_d = SEND_DATA;
+            end else begin
+                state_d = IDLE;
+            end
         end
 
-        READ_MEM: begin
-            if(ccu_resp_i.r_valid) begin
-                state_d = SEND_DATA;
+        SEND_AXI_REQ: begin
+            $display("SEND_AXI_REQ");
+			// wait for responding slave to de-assert ar_ready
+            if(ccu_resp_i.ar_ready !='b0) begin
+                state_d = SEND_AXI_REQ;
             end else begin
                 state_d = READ_MEM;
             end
-        end        
-        endcase
+        end
+		
+		READ_MEM: begin
+            $display("READ_MEM");
+			// wait for responding slave to assert r_valid
+            if(ccu_resp_i.r_valid) begin
+                state_d = IDLE;
+            end else begin
+                state_d = READ_MEM;
+            end
+        end  
+		
+        SEND_INVALID: begin
+            $display("SEND_INVALID");
+			// wait for all snoop masters to de-assert AC ready 
+            if (mst_resp_ac_ready != 'b0) begin
+                state_d = SEND_INVALID;
+            end else begin
+                state_d = WAIT_RESP_W;
+            end
+        end
+
+        WAIT_RESP_W: begin
+            $display("WAIT_RESP_W %b", mst_resp_cr_valid);
+            // wait for all snoop masters to assert CR valid 
+            if (mst_resp_cr_valid != '1) begin
+                state_d = WAIT_RESP_W;
+            end else begin
+                state_d = SEND_ACK;
+            end
+        end
+
+        SEND_ACK: begin
+            $display("SEND_ACK");
+            state_d = IDLE;
+        end
+
+    endcase
     end
 
-    /// Output block
-    always_ff @(posedge clk_i) begin: ccu_output
-        case(state_q) 
-        IDLE:begin
-            s2m_req_o.ac_valid      <= 'b0;
-            s2m_req_o.ac.addr       <= 'b0;
-            s2m_req_o.ac.acsnoop    <= 'b0;
-            s2m_req_o.ac.acprot     <= 'b0;
-        end
-        SEND_INVALID:begin
-            s2m_req_o.ac_valid      <= 'b1;
-            s2m_req_o.ac.addr       <= m_req_i.aw.addr;
-            s2m_req_o.ac.acsnoop    <= 'b1001;
-            s2m_req_o.ac.acprot     <= m_req_i.aw.prot;
-        end
-        SEND_READ:begin
-            s2m_req_o.ac_valid      <= 'b1;
-            s2m_req_o.ac.addr       <= m_req_i.ar.addr;
-            s2m_req_o.ac.acsnoop    <= m_req_i.ar.arsnoop;
-            s2m_req_o.ac.acprot     <= m_req_i.ar.prot;
-        end
-        WAIT_RESP:begin
-            s2m_req_o.ac_valid      <= 'b1;
-            s2m_req_o.ac.addr       <= s2m_req_o.ac.addr;
-            s2m_req_o.ac.acsnoop    <= s2m_req_o.ac.acsnoop;
-            s2m_req_o.ac.acprot     <= s2m_req_o.ac.acprot;
-        end 
-        default:begin
-            s2m_req_o.ac_valid      <= 'b0;
-            s2m_req_o.ac.addr       <= 'b0;
-            s2m_req_o.ac.acsnoop    <= 'b0;
-            s2m_req_o.ac.acprot     <= 'b0;
-        end
-        endcase
+// output block
+always_comb begin : ccu_output_block
+    case(state_q) 
+    IDLE: begin
+        ccu_req_o           =   'b0;
+        ccu_resp_o          =   'b0;
+        s2m_req_o           =   'b0;
+        ccu_resp_o.ar_ready =   'b1;
+        ccu_resp_o.aw_ready =   'b1;
+        ccu_resp_o.w_ready  =   'b1;
+    end
+
+    DECODE: begin
+        ccu_req_o           =   'b0;
+        ccu_resp_o          =   'b0;
+        s2m_req_o           =   'b0;
+    end
+
+    SEND_READ: begin
+        ccu_req_o           =   'b0;
+        ccu_resp_o          =   'b0;
+        // send request to snooping masters
+        s2m_req_o.ac.addr   =   ccu_req_holder.ar.addr;
+        s2m_req_o.ac.prot   =   ccu_req_holder.ar.prot;
+        s2m_req_o.ac.snoop  =   ccu_req_holder.ar.snoop;
+        s2m_req_o.ac_valid  =   'b1;
+        s2m_req_o.cd_ready  =   'b1;
+        s2m_req_o.cr_ready  =   'b1;
+    end
+
+    WAIT_RESP_R:
+    WAIT_RESP_W:
+     begin
+        ccu_req_o           =   'b0;
+        ccu_resp_o          =   'b0;
+        s2m_req_o           =   'b0;
+        s2m_req_o.cd_ready  =   'b1;
+        s2m_req_o.cr_ready  =   'b1;
+    end
+
+    SEND_DATA: begin
+        ccu_req_o           =   'b0;
+        s2m_req_o           =   'b0;
+        // response to intiating master
+        ccu_resp_o.aw_ready =   'b1;
+        ccu_resp_o.ar_ready =   'b1;
+        ccu_resp_o.w_ready  =   'b1;
+        ccu_resp_o.b_valid  =   'b0;
+        ccu_resp_o.b        =   'b0;
+        ccu_resp_o.r_valid  =   'b1;
+        ccu_resp_o.r.id     =   ccu_req_holder.ar.id;
+        ccu_resp_o.r.data   =   m2s_resp_i[0].cd.data;
+        ccu_resp_o.r.resp   =   'b0;
+        ccu_resp_o.r.last   =   m2s_resp_i[0].cd.last;
+        ccu_resp_o.r.user   =   ccu_req_holder.ar.user;
+    end
+
+    SEND_AXI_REQ: begin
+        s2m_req_o           =   'b0;
+        ccu_resp_o          =   'b0;
+        // forward request to slave (RAM)
+        ccu_req_o.ar_valid  =   1'b1;
+        ccu_req_o.ar        =   ccu_req_holder.ar;
+        ccu_req_o.aw_valid  =   1'b0;
+        ccu_req_o.aw        =   ccu_req_holder.aw;
+        ccu_req_o.w_valid   =   1'b0;
+        ccu_req_o.w         =   'b0;
+        ccu_req_o.b_ready   =   'b1;
+        ccu_req_o.r_ready   =   1'b1;
+    end
+
+    READ_MEM: begin
+        s2m_req_o           =   'b0;
+        ccu_req_o           =   'b0;
+        // forward reponse from slave to intiating master
+        ccu_resp_o.aw_ready =   'b1;
+        ccu_resp_o.ar_ready =   'b1;
+        ccu_resp_o.w_ready  =   'b1;
+        ccu_resp_o.b_valid  =   'b0;
+        ccu_resp_o.b        =   'b0;
+        ccu_resp_o.r_valid  =   'b1;
+        ccu_resp_o.r        =   ccu_resp_i.r;
+    end
+
+    SEND_INVALID:begin
+        ccu_req_o           =   'b0;
+        ccu_resp_o          =   'b0;
+        s2m_req_o.ac.addr   =   ccu_req_holder.ar_valid ? ccu_req_holder.ar.addr : ccu_req_holder.aw.addr;
+        s2m_req_o.ac.prot   =   ccu_req_holder.ar_valid ? ccu_req_holder.ar.prot : ccu_req_holder.aw.prot;
+        s2m_req_o.ac.snoop  =   'b1001;
+        s2m_req_o.ac_valid  =   'b1;
+        s2m_req_o.cd_ready  =   'b1;
+        s2m_req_o.cr_ready  =   'b1;
     end 
+
+    SEND_ACK:begin
+        s2m_req_o           =   'b0;
+        ccu_req_o           =   'b0;
+        // forward reponse from slave to intiating master
+        ccu_resp_o.aw_ready =   'b1;
+        ccu_resp_o.ar_ready =   'b1;
+        ccu_resp_o.w_ready  =   'b1;
+        ccu_resp_o.b_valid  =   ccu_req_holder.aw_valid;
+        ccu_resp_o.b.id     =   ccu_req_holder.aw.id;
+        ccu_resp_o.b.user   =   ccu_req_holder.aw.user;
+        ccu_resp_o.b.resp   =   'b0;
+
+        // ccu_resp_o.r_valid  =   'b0;
+        // ccu_resp_o.r.id     =   ccu_req_holder.ar.id;
+        // ccu_resp_o.r.user   =   ccu_req_holder.ar.user;
+        // ccu_resp_o.r.last   =   1'b0;
+        // ccu_resp_o.r.data   =   'hdeadbeef;
+        // ccu_resp_o.r.resp   =   'b0;
+    
+    end 
+
+
+    endcase
+    end
+
+// latch addresses from 
+always_ff @(posedge clk_i , negedge rst_ni) begin
+    if(!rst_ni) begin
+        ccu_req_holder.ar <= 'b0;
+        ccu_req_holder.aw <= 'b0;
+    end else if(state_q == IDLE && (ccu_req_i.ar_valid | ccu_req_i.aw_valid)) begin
+        `ACE_SET_AR_STRUCT(ccu_req_holder.ar, ccu_req_i.ar)
+        `ACE_SET_AW_STRUCT(ccu_req_holder.aw, ccu_req_i.aw)
+    end
+end
 
 endmodule 
