@@ -62,6 +62,8 @@ mst_stg_resp_t [Cfg.NoSlvPorts:0]          mst_resps;
 slv_req_t  [Cfg.NoSlvPorts-1:0]            ccu_reqs_i;   
 slv_resp_t [Cfg.NoSlvPorts-1:0]            ccu_resps_o;
 // signals from the CCU
+mst_stg_req_t                              ccu_reqs_mux_o;   
+mst_stg_resp_t                             ccu_resps_mux_i;
 mst_stg_req_t                              ccu_reqs_o;   
 mst_stg_resp_t                             ccu_resps_i;
 
@@ -152,17 +154,12 @@ axi_mux #(
 for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_non_shared_conn
     `ACE_ASSIGN_REQ_STRUCT(mst_reqs[i], slv_reqs[i][0])
     `ACE_ASSIGN_RESP_STRUCT(slv_resps[i][0], mst_resps[i])
-    // assign mst_reqs[i]  = slv_reqs[i][0];
-    // assign slv_resps[i][0] = mst_resps[i];
 end    
 
 // connection reqs and resps for shareable transactions with CCU 
 for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_shared_conn
     `ACE_ASSIGN_REQ_STRUCT(ccu_reqs_i[i], slv_reqs[i][1])
     `ACE_ASSIGN_RESP_STRUCT(slv_resps[i][1], ccu_resps_o[i])
-    
-    // assign ccu_reqs_i[i]  = slv_reqs[i][1];
-    // assign slv_resps[i][1] = ccu_resps_o[i] ;
 end  
 
 axi_mux #(
@@ -188,24 +185,34 @@ axi_mux #(
   .test_i,  // Test Mode enable
   .slv_reqs_i  ( ccu_reqs_i       ),
   .slv_resps_o ( ccu_resps_o      ),
-  .mst_req_o   ( ccu_reqs_o       ),
-  .mst_resp_i  ( ccu_resps_i      )
+  .mst_req_o   ( ccu_reqs_mux_o   ),
+  .mst_resp_i  ( ccu_resps_mux_i  )
 );
-// Temporary solution it will stuck after few transactions due to ID clashes
-// assign ccu_reqs_o     = ccu_reqs_i[0];
-// for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_assign_resp
-//   assign ccu_resps_o[i] = ccu_resps_i;
-// end 
 
 
+ccu_fsm  
+#(
+    .NoMstPorts      ( Cfg.NoSlvPorts     ),  
+    .mst_req_t       ( mst_stg_req_t      ),
+    .mst_resp_t      ( mst_stg_resp_t     ),
+    .snoop_req_t     ( snoop_req_t        ),
+    .snoop_resp_t    ( snoop_resp_t       )
+
+) fsm (  
+    .clk_i,
+    .rst_ni,
+    .ccu_req_i       ( ccu_reqs_mux_o     ),
+    .ccu_resp_o      ( ccu_resps_mux_i    ),
+    .ccu_req_o       ( ccu_reqs_o         ),
+    .ccu_resp_i      ( ccu_resps_i        ),
+    .s2m_req_o       ( slv_snp_req_o[0]   ),
+    .m2s_resp_i      ( slv_snp_resp_i     )
+);
 
 // connect CCU reqs and resps to mux  
 `ACE_ASSIGN_REQ_STRUCT(mst_reqs[Cfg.NoSlvPorts], ccu_reqs_o)
 `ACE_ASSIGN_RESP_STRUCT(ccu_resps_i, mst_resps[Cfg.NoSlvPorts])
-    
-// assign mst_reqs[Cfg.NoSlvPorts]     = ccu_reqs_o;
-// assign ccu_resps_i                  = mst_resps[Cfg.NoSlvPorts];
-  
+      
 endmodule
 
 
@@ -270,7 +277,7 @@ import cf_math_pkg::idx_width;
   snoop_req_t       [Cfg.NoSlvPorts-1:0]  snoop_reqs;
   snoop_resp_t      [Cfg.NoSlvPorts-1:0]  snoop_resps;
 
-
+  
 
   /// Assigning ACE request from CCU Mux to slave(RAM )  
   `AXI_ASSIGN_FROM_REQ(mst_ports, mst_ace_reqs)
@@ -285,7 +292,8 @@ import cf_math_pkg::idx_width;
     /// Assigning SNOOP request from CCU logic to master 
     `SNOOP_ASSIGN_FROM_REQ(snoop_ports[i], snoop_reqs[i])
     /// Assigning SNOOP response from master to CCU logic
-    `SNOOP_ASSIGN_TO_RESP(snoop_resps[i], snoop_ports[i])
+    //`SNOOP_ASSIGN_TO_RESP(snoop_resps[i], snoop_ports[i])
+    assign snoop_resps[i] ='b0;
   end
 
 
