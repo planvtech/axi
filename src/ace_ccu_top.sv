@@ -178,36 +178,42 @@ axi_mux #(
   .mst_req_t     ( mst_stg_req_t          ),
   .mst_resp_t    ( mst_stg_resp_t         ),
   .NoSlvPorts    ( Cfg.NoSlvPorts         ), // Number of Masters for the modules
-  .MaxWTrans     ( Cfg.MaxSlvTrans        )
+  .MaxWTrans     ( Cfg.MaxSlvTrans        ),
+  .FallThrough   ( Cfg.FallThrough        ),
+  .SpillAw       ( Cfg.LatencyMode[4]     ),
+  .SpillW        ( Cfg.LatencyMode[3]     ),
+  .SpillB        ( Cfg.LatencyMode[2]     ),
+  .SpillAr       ( Cfg.LatencyMode[1]     ),
+  .SpillR        ( Cfg.LatencyMode[0]     )
 ) i_ace_mux (
   .clk_i,   // Clock
   .rst_ni,  // Asynchronous reset active low
   .test_i,  // Test Mode enable
   .slv_reqs_i  ( ccu_reqs_i       ),
   .slv_resps_o ( ccu_resps_o      ),
-  .mst_req_o   ( ccu_reqs_mux_o   ),
-  .mst_resp_i  ( ccu_resps_mux_i  )
+  .mst_req_o   ( ccu_reqs_o   ),
+  .mst_resp_i  ( ccu_resps_i  )
 );
 
 
-ccu_fsm  
-#(
-    .NoMstPorts      ( Cfg.NoSlvPorts     ),  
-    .mst_req_t       ( mst_stg_req_t      ),
-    .mst_resp_t      ( mst_stg_resp_t     ),
-    .snoop_req_t     ( snoop_req_t        ),
-    .snoop_resp_t    ( snoop_resp_t       )
+// ccu_fsm  
+// #(
+//     .NoMstPorts      ( Cfg.NoSlvPorts     ),  
+//     .mst_req_t       ( mst_stg_req_t      ),
+//     .mst_resp_t      ( mst_stg_resp_t     ),
+//     .snoop_req_t     ( snoop_req_t        ),
+//     .snoop_resp_t    ( snoop_resp_t       )
 
-) fsm (  
-    .clk_i,
-    .rst_ni,
-    .ccu_req_i       ( ccu_reqs_mux_o     ),
-    .ccu_resp_o      ( ccu_resps_mux_i    ),
-    .ccu_req_o       ( ccu_reqs_o         ),
-    .ccu_resp_i      ( ccu_resps_i        ),
-    .s2m_req_o       ( slv_snp_req_o[0]   ),
-    .m2s_resp_i      ( slv_snp_resp_i     )
-);
+// ) fsm (  
+//     .clk_i,
+//     .rst_ni,
+//     .ccu_req_i       ( ccu_reqs_mux_o     ),
+//     .ccu_resp_o      ( ccu_resps_mux_i    ),
+//     .ccu_req_o       ( ccu_reqs_o         ),
+//     .ccu_resp_i      ( ccu_resps_i        ),
+//     .s2m_req_o       ( slv_snp_req_o[0]   ),
+//     .m2s_resp_i      ( slv_snp_resp_i     )
+// );
 
 // connect CCU reqs and resps to mux  
 `ACE_ASSIGN_REQ_STRUCT(mst_reqs[Cfg.NoSlvPorts], ccu_reqs_o)
