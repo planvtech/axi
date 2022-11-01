@@ -37,6 +37,7 @@ module ccu_fsm
     logic [NoMstPorts-1:0] mst_resp_ac_ready;
     // temp request holder
     mst_req_t              ccu_req_holder; 
+    mst_resp_t             ccu_resp_holder;
 
 
     // stack snoop reponse valids and data_available
@@ -62,11 +63,9 @@ module ccu_fsm
         case(state_q)
         IDLE: begin
             if(ccu_req_i.ar_valid ) begin
-                state_d = DECODE_R;    
-                $display("IDLE");               
+                state_d = DECODE_R;                  
             end else if (ccu_req_i.aw_valid) begin
                 state_d = DECODE_W;
-                $display("IDLE");
             end else begin
                 state_d = IDLE;
             end
@@ -74,10 +73,10 @@ module ccu_fsm
         
         // determine if transaction is type of Read or clean-Invalid
         DECODE_R: begin       
-            if(ccu_req_holder.ar.snoop !=4'b1011) begin
+            if(ccu_req_holder.ar.snoop !=4'b1011) begin 
                state_d = SEND_READ;
             end else begin
-               state_d = SEND_INVALID;
+              state_d = SEND_INVALID;
             end
         end
 
@@ -120,7 +119,6 @@ module ccu_fsm
         end
 		
 		READ_MEM: begin
-            $display("READ_MEM");
 			// wait for responding slave to assert r_valid
             if(ccu_resp_i.r_valid) begin
                 state_d = SEND_ACK;
@@ -157,11 +155,10 @@ module ccu_fsm
         end
 
         SEND_ACK: begin
-            $display("SEND_ACK");
-            if(ccu_req_i.b_ready | ccu_req_i.r_ready)
-             state_d = IDLE;
+            if( ccu_req_i.r_ready)
+                state_d = IDLE;
             else
-             state_d = SEND_ACK;
+                state_d = SEND_ACK;
         end
 
     endcase
@@ -175,19 +172,19 @@ module ccu_fsm
     ccu_req_o           =   '0;
     ccu_resp_o          =   '0;
     s2m_req_o           =   '0;
+ 
 
     case(state_q) 
     IDLE: begin
-    ccu_resp_o.aw_ready =   'b1;
-    ccu_resp_o.ar_ready =   'b1;
+        ccu_resp_o.aw_ready =   'b1;
+        ccu_resp_o.ar_ready =   'b1;
     end
 
     DECODE_R: begin
-        ccu_resp_o.ar_ready =   'b0;
+
     end
     
     DECODE_W: begin
-        ccu_resp_o.aw_ready =   'b0;
         ccu_resp_o.w_ready  =   'b1;
     end
 
@@ -215,16 +212,12 @@ module ccu_fsm
 
     SEND_AXI_REQ: begin
         // forward request to slave (RAM)
-        ccu_req_o.ar_valid  =   'b1;
-        ccu_req_o.ar        =   ccu_req_holder.ar;
-        ccu_req_o.aw        =   ccu_req_holder.aw;
+        ccu_req_o        =   ccu_req_holder;
     end
 
     READ_MEM: begin
         // forward reponse from slave to intiating master
-        ccu_resp_o          =   ccu_resp_i;
-
-        
+        ccu_req_o.r_ready   =   'b1;     
     end
 
     SEND_INVALID:begin
@@ -238,10 +231,7 @@ module ccu_fsm
     
     SEND_ACK:begin
         // forward reponse from slave to intiating master
-        ccu_resp_o.aw_ready =   'b1;
-        ccu_resp_o.ar_ready =   'b1;
-        ccu_req_o.r_ready   =   'b1;
-               
+        ccu_resp_o          =   ccu_resp_i;     
     end 
     endcase
     end
@@ -251,11 +241,19 @@ always_ff @(posedge clk_i , negedge rst_ni) begin
     if(!rst_ni) begin
         ccu_req_holder <= '0;
     end else if(state_q == IDLE && (ccu_req_i.ar_valid | ccu_req_i.aw_valid)) begin
-        $display("HOLD");
         ccu_req_holder <=  ccu_req_i;
     end 
 end
 
+// latch addresses from 
+always_ff @(posedge clk_i , negedge rst_ni) begin
+    if(!rst_ni) begin
+        ccu_resp_holder <= '0;
+    end else if(state_q == READ_MEM && (ccu_resp_i.r_valid)) begin
+        $display("HOLD RP");
+        ccu_resp_holder <=  ccu_resp_i;        
+    end 
+end
    
 
 endmodule 
