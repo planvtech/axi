@@ -297,7 +297,7 @@ package snoop_test;
       end
 
       // Randomize address
-      addr  = mem_region.addr_begin + $urandom(32'h10000);
+      addr  = mem_region.addr_begin + $urandom_range(mem_region.addr_end-mem_region.addr_begin+1);
 
       ace_ac_beat.ac_addr = addr;
       snoop      = $urandom();
@@ -342,7 +342,7 @@ package snoop_test;
         automatic ace_cd_beat_t ace_cd_beat;
         rand_wait(CR_MIN_WAIT_CYCLES, CR_MAX_WAIT_CYCLES);
         drv.recv_cr(ace_cr_beat);
-        if (!ace_cr_beat.cr_resp.error)
+        if (!ace_cr_beat.cr_resp.error & ace_cr_beat.cr_resp.dataTransfer)
           drv.recv_cd(ace_cd_beat);
       end
     endtask
