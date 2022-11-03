@@ -24,6 +24,8 @@ module ccu_fsm
     input  snoop_resp_t [NoMstPorts-1:0] m2s_resp_i
 );
 
+
+
     enum logic [3:0] {IDLE, DECODE_R, DECODE_W,
                       SEND_READ, WAIT_RESP_R, SEND_DATA, SEND_AXI_REQ, READ_MEM,
                       SEND_INVALID, WAIT_RESP_W, SEND_ACK 
@@ -102,7 +104,7 @@ module ccu_fsm
 
         SEND_DATA: begin
 			// wait for initiating master to de-assert r_ready
-            if(ccu_req_i.r_ready != '1) begin
+            if(ccu_req_i.r_ready != 'b1) begin
                 state_d = SEND_DATA;
             end else begin
                 state_d = IDLE;
@@ -111,16 +113,17 @@ module ccu_fsm
 
         SEND_AXI_REQ: begin
 			// wait for responding slave to de-assert ar_ready
-            if(ccu_resp_i.ar_ready !='1) begin
+            if(ccu_resp_i.ar_ready !='b1) begin
                 state_d = SEND_AXI_REQ;
             end else begin
                 state_d = READ_MEM;
+                $display ("AR ID : %h",ccu_req_o.ar.id);
             end
         end
 		
 		READ_MEM: begin
 			// wait for responding slave to assert r_valid
-            if(ccu_resp_i.r_valid) begin
+            if(ccu_resp_i.r.last && ccu_resp_i.r_valid) begin
                 state_d = SEND_ACK;
             end else begin
                 state_d = READ_MEM;
@@ -155,7 +158,7 @@ module ccu_fsm
         end
 
         SEND_ACK: begin
-            if( ccu_req_i.r_ready)
+            if( ccu_req_i.r_ready == '1 )
                 state_d = IDLE;
             else
                 state_d = SEND_ACK;
@@ -178,6 +181,8 @@ module ccu_fsm
     IDLE: begin
         ccu_resp_o.aw_ready =   'b1;
         ccu_resp_o.ar_ready =   'b1;
+        ccu_resp_o.r.last =   'b1;
+
     end
 
     DECODE_R: begin
@@ -212,7 +217,8 @@ module ccu_fsm
 
     SEND_AXI_REQ: begin
         // forward request to slave (RAM)
-        ccu_req_o        =   ccu_req_holder;
+        ccu_req_o.ar_valid       =   'b1;
+        ccu_req_o.ar             =    ccu_req_holder.ar; 
     end
 
     READ_MEM: begin
@@ -231,7 +237,9 @@ module ccu_fsm
     
     SEND_ACK:begin
         // forward reponse from slave to intiating master
-        ccu_resp_o          =   ccu_resp_i;     
+        ccu_resp_o.r        =   ccu_resp_holder.r;
+        ccu_resp_o.r_valid  =   'b1;
+        //ccu_req_o.rack      =   'b1;     
     end 
     endcase
     end
@@ -250,7 +258,7 @@ always_ff @(posedge clk_i , negedge rst_ni) begin
     if(!rst_ni) begin
         ccu_resp_holder <= '0;
     end else if(state_q == READ_MEM && (ccu_resp_i.r_valid)) begin
-        $display("HOLD RP");
+       // $display("HOLD RP");
         ccu_resp_holder <=  ccu_resp_i;        
     end 
 end

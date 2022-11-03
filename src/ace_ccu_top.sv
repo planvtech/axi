@@ -77,9 +77,9 @@ for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_slv_port_demux
     ace_trs_dec #(
       .slv_ace_req_t  (       slv_req_t        )
     ) i_ace_trs_dec (   
-        .slv_reqs_i   (   slv_ports_req_i[i]   ),
-        .snoop_aw_trs (   slv_aw_select[i]     ),
-        .snoop_ar_trs (   slv_ar_select[i]     )
+      .slv_reqs_i     (   slv_ports_req_i[i]   ),
+      .snoop_aw_trs   (   slv_aw_select[i]     ),
+      .snoop_ar_trs   (   slv_ar_select[i]     )
     );
 
     // demux
@@ -132,7 +132,7 @@ axi_mux #(
   .mst_req_t     ( mst_req_t              ),
   .mst_resp_t    ( mst_resp_t             ),
   .NoSlvPorts    ( Cfg.NoSlvPorts + 1     ), // Number of Masters for the modules
-  .MaxWTrans     ( 1        ),
+  .MaxWTrans     ( Cfg.MaxMstTrans        ),
   .FallThrough   ( Cfg.FallThrough        ),
   .SpillAw       ( Cfg.LatencyMode[4]     ),
   .SpillW        ( Cfg.LatencyMode[3]     ),
@@ -178,7 +178,7 @@ axi_mux #(
   .mst_req_t     ( mst_stg_req_t          ),
   .mst_resp_t    ( mst_stg_resp_t         ),
   .NoSlvPorts    ( Cfg.NoSlvPorts         ), // Number of Masters for the modules
-  .MaxWTrans     ( 1        ),
+  .MaxWTrans     ( Cfg.MaxMstTrans        ),
   .FallThrough   ( Cfg.FallThrough        ),
   .SpillAw       ( Cfg.LatencyMode[4]     ),
   .SpillW        ( Cfg.LatencyMode[3]     ),
