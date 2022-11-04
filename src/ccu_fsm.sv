@@ -117,13 +117,12 @@ module ccu_fsm
                 state_d = SEND_AXI_REQ;
             end else begin
                 state_d = READ_MEM;
-                $display ("AR ID : %h",ccu_req_o.ar.id);
             end
         end
 		
 		READ_MEM: begin
 			// wait for responding slave to assert r_valid
-            if(ccu_resp_i.r.last && ccu_resp_i.r_valid) begin
+            if(ccu_resp_i.r_valid) begin
                 state_d = SEND_ACK;
             end else begin
                 state_d = READ_MEM;
@@ -158,10 +157,15 @@ module ccu_fsm
         end
 
         SEND_ACK: begin
-            if( ccu_req_i.r_ready == '1 )
-                state_d = IDLE;
-            else
+            if( ccu_req_i.r_ready ) begin
+               if(ccu_resp_holder.r.last) begin
+                    state_d = IDLE;
+               end else begin
+                    state_d = READ_MEM;
+               end
+            end else begin
                 state_d = SEND_ACK;
+            end
         end
 
     endcase
@@ -181,8 +185,6 @@ module ccu_fsm
     IDLE: begin
         ccu_resp_o.aw_ready =   'b1;
         ccu_resp_o.ar_ready =   'b1;
-        ccu_resp_o.r.last =   'b1;
-
     end
 
     DECODE_R: begin
@@ -219,11 +221,13 @@ module ccu_fsm
         // forward request to slave (RAM)
         ccu_req_o.ar_valid       =   'b1;
         ccu_req_o.ar             =    ccu_req_holder.ar; 
+
     end
 
     READ_MEM: begin
-        // forward reponse from slave to intiating master
-        ccu_req_o.r_ready   =   'b1;     
+        // indicate slave to send data on r channel 
+        //ccu_req_o.r_ready   =   'b1; 
+        ccu_req_o.r_ready   =   'b1; 
     end
 
     SEND_INVALID:begin
@@ -237,9 +241,10 @@ module ccu_fsm
     
     SEND_ACK:begin
         // forward reponse from slave to intiating master
-        ccu_resp_o.r        =   ccu_resp_holder.r;
-        ccu_resp_o.r_valid  =   'b1;
-        //ccu_req_o.rack      =   'b1;     
+        ccu_resp_o.r        =   ccu_resp_holder.r;   
+        ccu_resp_o.r_valid  =   1'b1;  
+        //ccu_resp_o.r.last  =   1'b1;  
+
     end 
     endcase
     end
@@ -257,8 +262,7 @@ end
 always_ff @(posedge clk_i , negedge rst_ni) begin
     if(!rst_ni) begin
         ccu_resp_holder <= '0;
-    end else if(state_q == READ_MEM && (ccu_resp_i.r_valid)) begin
-       // $display("HOLD RP");
+    end else if (state_q == READ_MEM && ccu_resp_i.r_valid) begin
         ccu_resp_holder <=  ccu_resp_i;        
     end 
 end
