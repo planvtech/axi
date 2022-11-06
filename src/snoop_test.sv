@@ -167,14 +167,17 @@ package snoop_test;
     task recv_cd (
                   output ace_cd_beat_t beat
                   );
-      snoop.cd_ready <= #TA 1;
-      cycle_start();
-      while (snoop.cd_valid != 1) begin cycle_end(); cycle_start(); end
       beat = new;
-      beat.cd_data = snoop.cd_data;
-      beat.cd_last = snoop.cd_last;
-      cycle_end();
-      snoop.cd_ready <= #TA 0;
+      beat.cd_last = '0;
+      while (!beat.cd_last) begin
+        snoop.cd_ready <= #TA 1;
+        cycle_start();
+        while (snoop.cd_valid != 1) begin cycle_end(); cycle_start(); end
+        beat.cd_data = snoop.cd_data;
+        beat.cd_last = snoop.cd_last;
+        cycle_end();
+        snoop.cd_ready <= #TA 0;
+      end
     endtask
 
     /// Monitor the AC channel and return the next beat.
@@ -399,7 +402,7 @@ package snoop_test;
     int unsigned          cd_wait_cnt;
 
     function new(
-      virtual ACE_BUS_DV #(
+      virtual SNOOP_BUS_DV #(
         .AXI_ADDR_WIDTH(AW),
         .AXI_DATA_WIDTH(DW)
       ) snoop
