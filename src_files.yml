@@ -77,6 +77,7 @@ axi_sim:
     - src/axi_sim_mem.sv
     - src/axi_test.sv
     - src/ace_test.sv
+    - src/snoop_test.sv
   flags:
     - skip_synthesis
     - only_local
