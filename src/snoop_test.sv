@@ -345,8 +345,9 @@ package snoop_test;
         automatic ace_cd_beat_t ace_cd_beat;
         rand_wait(CR_MIN_WAIT_CYCLES, CR_MAX_WAIT_CYCLES);
         drv.recv_cr(ace_cr_beat);
-        if (!ace_cr_beat.cr_resp.error & ace_cr_beat.cr_resp.dataTransfer)
+        if (!ace_cr_beat.cr_resp.error & ace_cr_beat.cr_resp.dataTransfer) begin
           drv.recv_cd(ace_cd_beat);
+        end
       end
     endtask
 
