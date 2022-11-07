@@ -403,8 +403,8 @@ package snoop_test;
 
     function new(
       virtual SNOOP_BUS_DV #(
-        .AXI_ADDR_WIDTH(AW),
-        .AXI_DATA_WIDTH(DW)
+        .SNOOP_ADDR_WIDTH(AW),
+        .SNOOP_DATA_WIDTH(DW)
       ) snoop
     );
       this.drv = new(snoop);
