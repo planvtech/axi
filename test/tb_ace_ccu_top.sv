@@ -86,6 +86,13 @@ module tb_ace_ccu_top #(
   `AXI_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
   `AXI_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
 
+  `SNOOP_TYPEDEF_AC_CHAN_T(snoop_ac_t, addr_t)
+  `SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, data_t)  
+  `SNOOP_TYPEDEF_CR_CHAN_T(snoop_cr_t)  
+  `SNOOP_TYPEDEF_REQ_T(snoop_req_t, snoop_ac_t)
+  `SNOOP_TYPEDEF_RESP_T(snoop_resp_t, snoop_cd_t, snoop_cr_t)
+
+
   typedef ace_test::ace_rand_master #(
     // AXI interface parameters
     .AW ( AxiAddrWidth       ),
@@ -128,6 +135,11 @@ module tb_ace_ccu_top #(
   // slave structs
   slv_req_t  [TbNumSlv-1:0] slaves_req;
   slv_resp_t [TbNumSlv-1:0] slaves_resp;
+
+  // snoop structs
+  snoop_req_t  [TbNumMst-1:0] snoop_req;
+  snoop_resp_t [TbNumMst-1:0] snoop_resp;
+
 
   // -------------------------------
   // AXI Interfaces
@@ -183,8 +195,20 @@ module tb_ace_ccu_top #(
   SNOOP_BUS #(
     .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
     .SNOOP_DATA_WIDTH ( AxiDataWidth      )
-  ) snp [TbNumMst-1:0] ();
-
+  ) snoop [TbNumMst-1:0] ();
+  SNOOP_BUS_DV #(
+    .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+    .SNOOP_DATA_WIDTH ( AxiDataWidth      )
+  ) snoop_dv [TbNumMst-1:0](clk);
+  SNOOP_BUS_DV #(
+    .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+    .SNOOP_DATA_WIDTH ( AxiDataWidth      )
+  ) snoop_monior_dv [TbNumMst-1:0](clk);
+   for (genvar i = 0; i < TbNumMst; i++) begin : gen_conn_dv_snoop
+    `SNOOP_ASSIGN(snoop_dv[i], snoop[i])
+    `SNOOP_ASSIGN_TO_REQ(snoop_req[i], snoop[i])
+    `SNOOP_ASSIGN_TO_RESP(snoop_resp[i], snoop[i])
+  end
 
   // -------------------------------
   // AXI Rand Masters and Slaves
@@ -259,7 +283,7 @@ module tb_ace_ccu_top #(
     .clk_i                  ( clk     ),
     .rst_ni                 ( rst_n   ),
     .test_i                 ( 1'b0    ),
-    .snoop_ports            ( snp   ),
+    .snoop_ports            ( snoop   ),
     .slv_ports              ( master  ),
     .mst_ports              ( slave[0]   )
   );

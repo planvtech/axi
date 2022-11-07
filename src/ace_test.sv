@@ -806,27 +806,27 @@ endclass
       
       case(trs )
         ace_pkg::READ_NO_SNOOP: begin
-          snoop = 'b0000;
+          snoop   = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
         end
         ace_pkg::CLEAN_INVALID: begin
-          snoop = 'b1001;
+          snoop   = 'b1001;
           domain  = 'b00;
           bar     = 'b00;
         end
         ace_pkg::WRITE_NO_SNOOP: begin
-          snoop = 'b0000;
+          snoop   = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
         end
         ace_pkg::WRITE_BACK: begin
-          snoop = 'b0011;
+          snoop   = 'b0011;
           domain  = 'b00;
           bar     = 'b00;
         end
         default: begin
-          snoop = 'b0000;
+          snoop   = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
         end

@@ -11,7 +11,6 @@
 // specific language governing permissions and limitations under the License.
 //
 
-
 module ace_trs_dec
 #(
   parameter type slv_ace_req_t = logic
@@ -36,12 +35,8 @@ assign write_no_snoop =   (slv_reqs_i.aw.snoop == 'b000) && (slv_reqs_i.aw.bar[0
 assign read_no_snoop  =    (slv_reqs_i.ar.snoop == 'b0000) && (slv_reqs_i.ar.bar[0] =='b0) &&
                         ((slv_reqs_i.ar.domain == 'b00) || (slv_reqs_i.ar.domain == 'b11) );
 
-// assign snoop_aw_trs = ~(write_back | write_no_snoop); 
-// assign snoop_ar_trs = ~(read_no_snoop);
- assign snoop_ar_trs = 1; 
- assign snoop_aw_trs = 0;
-
-
-
+assign snoop_aw_trs = 0;//~(write_back | write_no_snoop); 
+assign snoop_ar_trs = ~(read_no_snoop);
+//assign snoop_aw_trs = 0;
 
 endmodule
