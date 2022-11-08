@@ -229,15 +229,6 @@ module ccu_fsm
             if(ccu_resp_i.b_valid !='b1) begin
                 state_d = WRITE_MEM;
             end else begin
-                state_d = SEND_ACK_W;
-            end
-        end
-
-        SEND_ACK_W: begin
-            // wait for responding slave to de-assert ar_ready
-            if(ccu_req_i.b_ready !='b1) begin
-                state_d = SEND_ACK_W;
-            end else begin
                 state_d = IDLE;
             end
         end
@@ -329,13 +320,9 @@ module ccu_fsm
         end
 
         WRITE_MEM: begin
-            ccu_req_o   = ccu_req_i; 
-            ccu_resp_o  = ccu_resp_i;
+            ccu_req_o           =  ccu_req_i;
+            ccu_resp_o          =  ccu_resp_i;
         end
-
-        SEND_ACK_W:begin 
-        end 
-
 
         endcase
     end // end output block
@@ -344,7 +331,7 @@ module ccu_fsm
     always_ff @(posedge clk_i , negedge rst_ni) begin
         if(!rst_ni) begin
             ccu_req_holder <= '0;
-        end else if(state_q == IDLE && (ccu_req_i.ar_valid | ccu_req_i.aw_valid)) begin
+        end else if(state_q == IDLE && (ccu_req_i.ar_valid | ccu_req_i.aw_valid) | state_q == WRITE_MEM && ( ccu_req_i.w_valid)) begin
             ccu_req_holder <=  ccu_req_i;
         end 
     end
@@ -353,7 +340,7 @@ module ccu_fsm
     always_ff @(posedge clk_i , negedge rst_ni) begin
         if(!rst_ni) begin
             ccu_resp_holder <= '0;
-        end else if ( state_q == READ_MEM && ccu_resp_i.r_valid) begin
+        end else if ( state_q == READ_MEM && ccu_resp_i.r_valid | state_q == WRITE_MEM && ccu_resp_i.b_valid) begin
             ccu_resp_holder <=  ccu_resp_i;        
         end 
     end
