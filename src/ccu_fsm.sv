@@ -140,7 +140,7 @@ module ccu_fsm
 
         SEND_DATA: begin
             // wait for initiating master to de-assert r_ready
-            if(ccu_req_i.r_ready == 'b0) begin
+            if(ccu_req_i.r_ready != 'b0) begin
                 if(mst_resp_cd_last != '0) begin 
                     state_d = IDLE;
                 end else begin 
@@ -226,12 +226,22 @@ module ccu_fsm
 
         WRITE_MEM: begin
             // wait for responding slave to send b_valid
-            if(ccu_resp_i.b_valid !='b1) begin
+            if(ccu_req_i.w.last =='b0) begin
                 state_d = WRITE_MEM;
+            end else begin
+                state_d = SEND_ACK_W;
+            end
+        end
+
+        SEND_ACK_W: begin
+            if((ccu_resp_i.b_valid && ccu_req_i.b_ready)!='b1) begin
+                state_d = SEND_ACK_W;
             end else begin
                 state_d = IDLE;
             end
         end
+
+
     endcase
     end
 
@@ -247,13 +257,17 @@ module ccu_fsm
 
         case(state_q) 
         IDLE: begin
-            ccu_resp_o.aw_ready =   'b1;
-            ccu_resp_o.ar_ready =   'b1;
+        //    ccu_resp_o.aw_ready =   'b1;
+        //    ccu_resp_o.ar_ready =   'b1;
         end
 
         //--------------------- 
         //---- Read Branch ----
         //--------------------- 
+
+        DECODE_R: begin
+            ccu_resp_o.ar_ready ='b1;
+        end
 
         SEND_READ: begin
             // send request to snooping masters
@@ -278,10 +292,11 @@ module ccu_fsm
             // response to intiating master
             for (int unsigned i = 0; i < NoMstPorts; i = i + 1)
                 if (data_available[i]) begin
-                    ccu_resp_o.r.data   =   m2s_resp_holder[i].cd.data;
-                    ccu_resp_o.r.last   =   m2s_resp_holder[i].cd.last;
+                    ccu_resp_o.r.data   =   m2s_resp_i[i].cd.data;
+                    ccu_resp_o.r.last   =   m2s_resp_i[i].cd.last;
                 end
-            ccu_resp_o.r_valid  =   'b1;   
+            ccu_resp_o.r_valid  =   'b1;
+            ccu_resp_o.r.id     =   ccu_req_holder.ar.id;   
             s2m_req_o.cd_ready  =   'b1; 
         end
 
@@ -312,16 +327,29 @@ module ccu_fsm
 
         //--------------------- 
         //---- Write Branch ---
-        //---------------------        
+        //---------------------   
+        DECODE_W: begin
+            ccu_resp_o.aw_ready ='b1;
+        end
+             
         SEND_AXI_REQ_W: begin
             // forward request to slave (RAM)
-            ccu_req_o.aw_valid  =   'b1;
+            ccu_req_o.aw_valid  =    'b1;
             ccu_req_o.aw        =    ccu_req_holder.aw; 
         end
 
         WRITE_MEM: begin
-            ccu_req_o           =  ccu_req_i;
-            ccu_resp_o          =  ccu_resp_i;
+            ccu_req_o.w       =  ccu_req_i.w;
+            ccu_req_o.w_valid =  ccu_req_i.w_valid;
+            ccu_resp_o        =  ccu_resp_i;
+        end
+
+        SEND_ACK_W: begin
+            ccu_req_o.w       =  ccu_req_i.w;
+            ccu_req_o.w_valid =  ccu_req_i.w_valid;
+            ccu_req_o.b_ready =  ccu_req_i.b_ready; 
+            ccu_resp_o        =  ccu_resp_i;
+
         end
 
         endcase
@@ -331,16 +359,16 @@ module ccu_fsm
     always_ff @(posedge clk_i , negedge rst_ni) begin
         if(!rst_ni) begin
             ccu_req_holder <= '0;
-        end else if(state_q == IDLE && (ccu_req_i.ar_valid | ccu_req_i.aw_valid) | state_q == WRITE_MEM && ( ccu_req_i.w_valid)) begin
+        end else if(state_q == IDLE && (ccu_req_i.ar_valid | ccu_req_i.aw_valid) ) begin
             ccu_req_holder <=  ccu_req_i;
-        end 
+        end  
     end
 
     // Hold incoming ACE response 
     always_ff @(posedge clk_i , negedge rst_ni) begin
         if(!rst_ni) begin
             ccu_resp_holder <= '0;
-        end else if ( state_q == READ_MEM && ccu_resp_i.r_valid | state_q == WRITE_MEM && ccu_resp_i.b_valid) begin
+        end else if ( state_q == READ_MEM && ccu_resp_i.r_valid ) begin
             ccu_resp_holder <=  ccu_resp_i;        
         end 
     end
