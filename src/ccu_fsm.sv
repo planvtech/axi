@@ -25,20 +25,20 @@ module ccu_fsm
 
     enum logic [4:0] {  IDLE,           //0
                         DECODE_R,       //1 
-                        SEND_INVALID_R, //3 
-                        SEND_READ,      //4
-                        WAIT_RESP_R,    //5   
-                        SEND_DATA,      //6
-                        SEND_AXI_REQ_R, //7
-                        READ_MEM,       //8
-                        SEND_ACK_R,     //9
-                        SEND_ACK_I_R,   //10                       
-                        DECODE_W,       //11
-                        SEND_INVALID_W, //12
-                        WAIT_RESP_W,    //13 
-                        SEND_AXI_REQ_W, //14
-                        WRITE_MEM,      //15
-                        SEND_ACK_W      //16
+                        SEND_INVALID_R, //2 
+                        SEND_READ,      //3
+                        WAIT_RESP_R,    //4   
+                        SEND_DATA,      //5
+                        SEND_AXI_REQ_R, //6
+                        READ_MEM,       //7
+                        WAIT_INVALID_R, //8
+                        SEND_ACK_I_R,   //9                       
+                        DECODE_W,       //10
+                        SEND_INVALID_W, //11
+                        WAIT_RESP_W,    //12 
+                        SEND_AXI_REQ_W, //13
+                        WRITE_MEM,      //14
+                        SEND_ACK_W      //15
                     } state_d, state_q;
     
     // snoop resoponse valid
@@ -102,11 +102,11 @@ module ccu_fsm
         //---------------------         
         DECODE_R: begin       
             // check read transaction type
-            if(ccu_req_holder.ar.snoop != 4'b1011) begin   // check if CleanUnique then send Invalidate 
+           // if(ccu_req_holder.ar.snoop != 4'b1011) begin   // check if CleanUnique then send Invalidate 
                 state_d = SEND_READ;
-            end else begin
-                state_d = SEND_INVALID_R;
-            end
+          //  end else begin
+        //        state_d = SEND_INVALID_R;
+        //    end
         end
 
         SEND_INVALID_R: begin
@@ -114,7 +114,16 @@ module ccu_fsm
             if (mst_resp_ac_ready != '0) begin
                 state_d = SEND_INVALID_R;
             end else begin
-                state_d = WAIT_RESP_R;
+                state_d = WAIT_INVALID_R;
+            end
+        end
+
+        WAIT_INVALID_R: begin
+            // wait for all snoop masters to assert CR valid 
+            if (mst_resp_cr_valid != '1) begin
+                state_d = WAIT_INVALID_R;
+            end else begin
+                state_d = SEND_ACK_I_R;
             end
         end
 
@@ -162,24 +171,16 @@ module ccu_fsm
         
         READ_MEM: begin
             // wait for responding slave to assert r_valid
-            if(ccu_resp_i.r_valid) begin
-                state_d = SEND_ACK_R;
-            end else begin
-                state_d = READ_MEM;
-            end
-        end         
-       
-        SEND_ACK_R: begin
-            if( ccu_req_i.r_ready ) begin
-                if(ccu_resp_holder.r.last) begin
+            if(ccu_resp_i.r_valid && ccu_req_i.r_ready) begin
+                if(ccu_resp_i.r.last) begin
                     state_d = IDLE;
                 end else begin
                     state_d = READ_MEM;
                 end
             end else begin
-                state_d = SEND_ACK_R;
+                state_d = READ_MEM;
             end
-        end
+        end         
 
         SEND_ACK_I_R: begin
             if( ccu_req_i.r_ready ) begin
@@ -193,7 +194,7 @@ module ccu_fsm
         //---- Write Branch ---
         //--------------------- 
 
-        DECODE_W: begin    
+        DECODE_W: begin  
             state_d = SEND_INVALID_W;
         end
 
@@ -226,20 +227,14 @@ module ccu_fsm
 
         WRITE_MEM: begin
             // wait for responding slave to send b_valid
-            if(ccu_req_i.w.last =='b0) begin
+            if(!(ccu_resp_i.b_valid && ccu_req_i.b_ready)) begin
                 state_d = WRITE_MEM;
-            end else begin
-                state_d = SEND_ACK_W;
-            end
-        end
-
-        SEND_ACK_W: begin
-            if((ccu_resp_i.b_valid && ccu_req_i.b_ready)!='b1) begin
-                state_d = SEND_ACK_W;
             end else begin
                 state_d = IDLE;
             end
         end
+
+        default: state_d = IDLE;
 
 
     endcase
@@ -257,18 +252,15 @@ module ccu_fsm
 
         case(state_q) 
         IDLE: begin
-        //    ccu_resp_o.aw_ready =   'b1;
-        //    ccu_resp_o.ar_ready =   'b1;
+
         end
 
         //--------------------- 
         //---- Read Branch ----
         //--------------------- 
-
-        DECODE_R: begin
-            ccu_resp_o.ar_ready ='b1;
+        DECODE_R:begin
+            ccu_resp_o.ar_ready =   'b1;
         end
-
         SEND_READ: begin
             // send request to snooping masters
             s2m_req_o.ac.addr   =   ccu_req_holder.ar.addr;
@@ -277,7 +269,7 @@ module ccu_fsm
             s2m_req_o.ac_valid  =   'b1;
         end
 
-        SEND_INVALID_R,SEND_INVALID_W:begin
+        SEND_INVALID_R:begin
             s2m_req_o.ac.addr   =   ccu_req_holder.ar.addr;
             s2m_req_o.ac.prot   =   ccu_req_holder.ar.prot;
             s2m_req_o.ac.snoop  =   'b1001;
@@ -303,19 +295,16 @@ module ccu_fsm
         SEND_AXI_REQ_R: begin
             // forward request to slave (RAM)
             ccu_req_o.ar_valid  =   'b1;
-            ccu_req_o.ar        =    ccu_req_holder.ar; 
+            ccu_req_o.ar        =   ccu_req_holder.ar;
+            ccu_req_o.r_ready   =   ccu_req_holder.r_ready ; 
         end
 
         READ_MEM: begin
             // indicate slave to send data on r channel 
-            ccu_req_o.r_ready   =   'b1; 
+            ccu_req_o.r_ready   =   ccu_req_i.r_ready ;
+            ccu_resp_o.r        =   ccu_resp_i.r;  
+            ccu_resp_o.r_valid  =   ccu_resp_i.r_valid; 
         end
-
-        SEND_ACK_R:begin
-            // forward reponse from slave to intiating master
-            ccu_resp_o.r        =   ccu_resp_holder.r;  
-            ccu_resp_o.r_valid  =   1'b1;   
-        end 
 
         SEND_ACK_I_R:begin
             // forward reponse from slave to intiating master
@@ -327,11 +316,18 @@ module ccu_fsm
 
         //--------------------- 
         //---- Write Branch ---
-        //---------------------   
+        //---------------------    
         DECODE_W: begin
-            ccu_resp_o.aw_ready ='b1;
+            ccu_resp_o.aw_ready =   'b1;
         end
-             
+
+        SEND_INVALID_W:begin
+            s2m_req_o.ac.addr   =   ccu_req_holder.aw.addr;
+            s2m_req_o.ac.prot   =   ccu_req_holder.aw.prot;
+            s2m_req_o.ac.snoop  =   'b1001;
+            s2m_req_o.ac_valid  =   'b1;         
+        end 
+
         SEND_AXI_REQ_W: begin
             // forward request to slave (RAM)
             ccu_req_o.aw_valid  =    'b1;
@@ -339,19 +335,15 @@ module ccu_fsm
         end
 
         WRITE_MEM: begin
-            ccu_req_o.w       =  ccu_req_i.w;
-            ccu_req_o.w_valid =  ccu_req_i.w_valid;
-            ccu_resp_o        =  ccu_resp_i;
-        end
+            ccu_req_o.w         =  ccu_req_i.w;
+            ccu_req_o.w_valid   =  ccu_req_i.w_valid;
+            ccu_req_o.b_ready   =  ccu_req_i.b_ready; 
 
-        SEND_ACK_W: begin
-            ccu_req_o.w       =  ccu_req_i.w;
-            ccu_req_o.w_valid =  ccu_req_i.w_valid;
-            ccu_req_o.b_ready =  ccu_req_i.b_ready; 
-            ccu_resp_o        =  ccu_resp_i;
+            ccu_resp_o.b        =  ccu_resp_i.b;
+            ccu_resp_o.b_valid  =  ccu_resp_i.b_valid;
+            ccu_resp_o.w_ready  =  ccu_resp_i.w_ready;
 
         end
-
         endcase
     end // end output block
 
@@ -359,19 +351,18 @@ module ccu_fsm
     always_ff @(posedge clk_i , negedge rst_ni) begin
         if(!rst_ni) begin
             ccu_req_holder <= '0;
-        end else if(state_q == IDLE && (ccu_req_i.ar_valid | ccu_req_i.aw_valid) ) begin
-            ccu_req_holder <=  ccu_req_i;
+        end else if(state_q == IDLE && ccu_req_i.ar_valid  ) begin
+            ccu_req_holder.ar 	    <=  ccu_req_i.ar;
+            ccu_req_holder.ar_valid <=  ccu_req_i.ar_valid;
+            ccu_req_holder.r_ready 	<=  ccu_req_i.r_ready;
+            
+        end  else if(state_q == IDLE &&  ccu_req_i.aw_valid) begin
+            ccu_req_holder.aw 	    <=  ccu_req_i.aw;
+            ccu_req_holder.aw_valid <=  ccu_req_i.aw_valid;
         end  
     end
 
-    // Hold incoming ACE response 
-    always_ff @(posedge clk_i , negedge rst_ni) begin
-        if(!rst_ni) begin
-            ccu_resp_holder <= '0;
-        end else if ( state_q == READ_MEM && ccu_resp_i.r_valid ) begin
-            ccu_resp_holder <=  ccu_resp_i;        
-        end 
-    end
+
     
     // Hold snoop response
     for (genvar i = 0; i < NoMstPorts; i = i + 1) begin: hold_snoop

@@ -304,7 +304,7 @@ import cf_math_pkg::idx_width;
 
 
   ace_ccu_top #(
-    .Cfg  (Cfg),
+    .Cfg                ( Cfg                   ),
     .ATOPs              ( ATOPS                 ),
     .slv_aw_chan_t      ( slv_ace_aw_chan_t     ),
     .mst_stg_aw_chan_t  ( mst_ace_stg_aw_chan_t ),
@@ -331,12 +331,12 @@ import cf_math_pkg::idx_width;
     .clk_i,
     .rst_ni,
     .test_i,
-    .slv_ports_req_i  (slv_ace_reqs ),
-    .slv_ports_resp_o (slv_ace_resps),
-    .slv_snp_req_o    (snoop_reqs   ),
-    .slv_snp_resp_i   (snoop_resps  ),
-    .mst_ports_req_o  (mst_ace_reqs ),
-    .mst_ports_resp_i (mst_ace_resps)
-  );
-
-endmodule
+    .slv_ports_req_i    ( slv_ace_reqs          ),
+    .slv_ports_resp_o   ( slv_ace_resps         ),
+    .slv_snp_req_o      ( snoop_reqs            ),
+    .slv_snp_resp_i     ( snoop_resps           ),
+    .mst_ports_req_o    ( mst_ace_reqs          ),
+    .mst_ports_resp_i   ( mst_ace_resps         )
+  );  
+ 
+endmodule         
