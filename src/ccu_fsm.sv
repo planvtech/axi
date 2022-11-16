@@ -100,7 +100,8 @@ module ccu_fsm
         //--------------------- 
         //---- Read Branch ----
         //---------------------         
-        DECODE_R: begin       
+        DECODE_R: begin    
+            $display("DECODE_R");   
             // check read transaction type
            // if(ccu_req_holder.ar.snoop != 4'b1011) begin   // check if CleanUnique then send Invalidate 
                 state_d = SEND_READ;
@@ -110,6 +111,7 @@ module ccu_fsm
         end
 
         SEND_INVALID_R: begin
+            $display("SEND_INVALID_R"); 
             // wait for all snoop masters to assert AC ready 
             if (mst_resp_ac_ready != '0) begin
                 state_d = SEND_INVALID_R;
@@ -119,6 +121,7 @@ module ccu_fsm
         end
 
         WAIT_INVALID_R: begin
+            $display("WAIT_INVALID_R"); 
             // wait for all snoop masters to assert CR valid 
             if (mst_resp_cr_valid != '1) begin
                 state_d = WAIT_INVALID_R;
@@ -128,6 +131,7 @@ module ccu_fsm
         end
 
         SEND_READ: begin
+            $display("SEND_READ"); 
             // wait for all snoop masters to de-assert AC ready 
             if (mst_resp_ac_ready != '0) begin
                 state_d = SEND_READ;
@@ -137,6 +141,7 @@ module ccu_fsm
         end
 
         WAIT_RESP_R: begin
+            $display("WAIT_RESP_R");
             // wait for all snoop masters to assert CR valid 
             if (mst_resp_cr_valid != '1) begin
                 state_d = WAIT_RESP_R;
@@ -148,6 +153,7 @@ module ccu_fsm
         end
 
         SEND_DATA: begin
+            $display("SEND_DATA");
             // wait for initiating master to de-assert r_ready
             if(ccu_req_i.r_ready != 'b0) begin
                 if(mst_resp_cd_last != '0) begin 
@@ -170,6 +176,7 @@ module ccu_fsm
         end
         
         READ_MEM: begin
+            $display("READ_MEM");
             // wait for responding slave to assert r_valid
             if(ccu_resp_i.r_valid && ccu_req_i.r_ready) begin
                 if(ccu_resp_i.r.last) begin
@@ -183,6 +190,7 @@ module ccu_fsm
         end         
 
         SEND_ACK_I_R: begin
+            $display("SEND_ACK_I_R");
             if( ccu_req_i.r_ready ) begin
                 state_d = IDLE;
             end else begin
@@ -195,10 +203,12 @@ module ccu_fsm
         //--------------------- 
 
         DECODE_W: begin  
+            $display("DECODE_W");
             state_d = SEND_INVALID_W;
         end
 
         SEND_INVALID_W: begin
+            $display("SEND_INVALID_W");
             // wait for all snoop masters to assert AC ready 
             if (mst_resp_ac_ready != '0) begin
                 state_d = SEND_INVALID_W;
@@ -208,6 +218,7 @@ module ccu_fsm
         end
 
         WAIT_RESP_W: begin
+            $display("WAIT_RESP_W");
             // wait for all snoop masters to assert CR valid 
             if (mst_resp_cr_valid != '1 ) begin
                 state_d = WAIT_RESP_W;
@@ -217,6 +228,7 @@ module ccu_fsm
         end
 
         SEND_AXI_REQ_W: begin
+            $display("SEND_AXI_REQ_W");
             // wait for responding slave to assert aw_ready
             if(ccu_resp_i.aw_ready !='b1) begin
                 state_d = SEND_AXI_REQ_W;
@@ -226,6 +238,7 @@ module ccu_fsm
         end
 
         WRITE_MEM: begin
+            $display("WRITE_MEM");
             // wait for responding slave to send b_valid
             if(!(ccu_resp_i.b_valid && ccu_req_i.b_ready)) begin
                 state_d = WRITE_MEM;
@@ -235,8 +248,6 @@ module ccu_fsm
         end
 
         default: state_d = IDLE;
-
-
     endcase
     end
 

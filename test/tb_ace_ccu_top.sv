@@ -42,7 +42,7 @@ module tb_ace_ccu_top #(
   // axi configuration
   localparam int unsigned AxiIdWidthMasters =  4;
   localparam int unsigned AxiIdUsed         =  3; // Has to be <= AxiIdWidthMasters
-  localparam int unsigned AxiIdWidthSlaves  =  AxiIdWidthMasters + $clog2(TbNumMst)+$clog2(TbNumMst+1);
+  localparam int unsigned AxiIdWidthSlaves  =  AxiIdWidthMasters + $clog2(TbNumMst)+1;
   localparam int unsigned AxiAddrWidth      =  32;    // Axi Address Width
   localparam int unsigned AxiDataWidth      =  64;    // Axi Data Width
   localparam int unsigned AxiStrbWidth      =  AxiDataWidth / 8;
@@ -54,7 +54,7 @@ module tb_ace_ccu_top #(
     MaxMstTrans:        10,
     MaxSlvTrans:        6,
     FallThrough:        1'b1,
-    LatencyMode:        ace_pkg::NO_LATENCY,
+    LatencyMode:        ace_pkg::CUT_ALL_PORTS,
     AxiIdWidthSlvPorts: AxiIdWidthMasters,
     AxiIdUsedSlvPorts:  AxiIdUsed,
     UniqueIds:          TbUniqueIds,

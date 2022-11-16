@@ -52,173 +52,172 @@ import cf_math_pkg::idx_width;
   input  mst_resp_t                                                     mst_ports_resp_i
 );
 
-// signals from the ace_demuxes
-slv_req_t  [Cfg.NoSlvPorts-1:0] [1:0]      slv_reqs;   // one for non-shareable and one for shareable req
-slv_resp_t [Cfg.NoSlvPorts-1:0] [1:0]      slv_resps;
-// signals into the ace_muxes
-mst_stg_req_t  [Cfg.NoSlvPorts:0]          mst_reqs;   // one extra port for CCU
-mst_stg_resp_t [Cfg.NoSlvPorts:0]          mst_resps;
-// signals into the CCU
-slv_req_t  [Cfg.NoSlvPorts-1:0]            ccu_reqs_i;   
-slv_resp_t [Cfg.NoSlvPorts-1:0]            ccu_resps_o;
-// signals from the CCU
-mst_stg_req_t                              ccu_reqs_mux_o;   
-mst_stg_resp_t                             ccu_resps_mux_i;
-mst_stg_req_t                              ccu_reqs_o;   
-mst_stg_resp_t                             ccu_resps_i;
+  // signals from ACE MUX
+  mst_stg_req_t            ace_mux_req_o;   
+  mst_stg_resp_t           ace_mux_resp_i;
 
-// selection lines for mux and demuxes
-logic [Cfg.NoSlvPorts-1:0]    slv_aw_select, slv_ar_select;
+  // signals from ACE DEMUX
+  mst_stg_req_t    [1:0]   ace_demux_req_o;   
+  mst_stg_resp_t   [1:0]   ace_demux_resp_i;
 
+  // signals from the CCU
+  mst_stg_req_t            ccu_reqs_o;   
+  mst_stg_resp_t           ccu_resps_i;
 
-for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_slv_port_demux
-    
-    // routing of incoming request through transaction type    
-    ace_trs_dec #(
-      .slv_ace_req_t  (       slv_req_t        )
-    ) i_ace_trs_dec (   
-      .slv_reqs_i     (   slv_ports_req_i[i]   ),
-      .snoop_aw_trs   (   slv_aw_select[i]     ),
-      .snoop_ar_trs   (   slv_ar_select[i]     )
-    );
+  // selection lines for demux
+  logic                    aw_select, ar_select;
 
-    // demux
-    axi_demux #(
-      .AxiIdWidth     ( Cfg.AxiIdWidthSlvPorts ),  // ID Width
-      .AtopSupport    ( ATOPs                  ),
-      .aw_chan_t      ( slv_aw_chan_t          ),  // AW Channel Type
-      .w_chan_t       ( w_chan_t               ),  //  W Channel Type
-      .b_chan_t       ( slv_b_chan_t           ),  //  B Channel Type
-      .ar_chan_t      ( slv_ar_chan_t          ),  // AR Channel Type
-      .r_chan_t       ( slv_r_chan_t           ),  //  R Channel Type
-      .axi_req_t      ( slv_req_t              ),
-      .axi_resp_t     ( slv_resp_t             ),
-      .NoMstPorts     ( 2                      ),  // one for CCU module and one for mux
-      .MaxTrans       ( Cfg.MaxMstTrans        ),
-      .AxiLookBits    ( Cfg.AxiIdUsedSlvPorts  ),
-      .UniqueIds      ( Cfg.UniqueIds          ),
-      //.FallThrough    ( Cfg.FallThrough        ),
-      .SpillAw        ( Cfg.LatencyMode[9]     ),
-      .SpillW         ( Cfg.LatencyMode[8]     ),
-      .SpillB         ( Cfg.LatencyMode[7]     ),
-      .SpillAr        ( Cfg.LatencyMode[6]     ),
-      .SpillR         ( Cfg.LatencyMode[5]     )
-    ) i_axi_demux (
-      .clk_i,   // Clock
-      .rst_ni,  // Asynchronous reset active low
-      .test_i,  // Testmode enable
-      .slv_req_i       ( slv_ports_req_i[i]    ),
-      .slv_aw_select_i ( slv_aw_select[i]      ),
-      .slv_ar_select_i ( slv_ar_select[i]      ),
-      .slv_resp_o      ( slv_ports_resp_o[i]   ),
-      .mst_reqs_o      ( slv_reqs[i]           ),
-      .mst_resps_i     ( slv_resps[i]          )
-    );
-end
-
-axi_mux #(
-  .SlvAxiIDWidth ( Cfg.AxiIdWidthSlvPorts+$clog2(Cfg.NoSlvPorts) ), // ID width of the slave ports
-  .slv_aw_chan_t ( mst_stg_aw_chan_t      ), // AW Channel Type, slave ports
-  .mst_aw_chan_t ( mst_aw_chan_t          ), // AW Channel Type, master port
-  .w_chan_t      ( w_chan_t               ), //  W Channel Type, all ports
-  .slv_b_chan_t  ( mst_stg_b_chan_t       ), //  B Channel Type, slave ports
-  .mst_b_chan_t  ( mst_b_chan_t           ), //  B Channel Type, master port
-  .slv_ar_chan_t ( mst_stg_ar_chan_t      ), // AR Channel Type, slave ports
-  .mst_ar_chan_t ( mst_ar_chan_t          ), // AR Channel Type, master port
-  .slv_r_chan_t  ( mst_stg_r_chan_t       ), //  R Channel Type, slave ports
-  .mst_r_chan_t  ( mst_r_chan_t           ), //  R Channel Type, master port
-  .slv_req_t     ( mst_stg_req_t          ),
-  .slv_resp_t    ( mst_stg_resp_t         ),
-  .mst_req_t     ( mst_req_t              ),
-  .mst_resp_t    ( mst_resp_t             ),
-  .NoSlvPorts    ( Cfg.NoSlvPorts + 1     ), // Number of Masters for the modules
-  .MaxWTrans     ( Cfg.MaxMstTrans        ),
-  .FallThrough   ( Cfg.FallThrough        ),
-  .SpillAw       ( Cfg.LatencyMode[4]     ),
-  .SpillW        ( Cfg.LatencyMode[3]     ),
-  .SpillB        ( Cfg.LatencyMode[2]     ),
-  .SpillAr       ( Cfg.LatencyMode[1]     ),
-  .SpillR        ( Cfg.LatencyMode[0]     )
-) i_axi_mux (
-  .clk_i,   // Clock
-  .rst_ni,  // Asynchronous reset active low
-  .test_i,  // Test Mode enable
-  .slv_reqs_i  ( mst_reqs         ),
-  .slv_resps_o ( mst_resps        ),
-  .mst_req_o   ( mst_ports_req_o  ),
-  .mst_resp_i  ( mst_ports_resp_i )
-);
+  // signals to AXI MUX
+  mst_req_t       [1:0]    mst_reqs;
+  mst_resp_t      [1:0]    mst_resps;
 
 
-// connection reqs and resps for non-shareable tarnsactions with axi_mux
-for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_non_shared_conn
-    `ACE_ASSIGN_REQ_STRUCT(mst_reqs[i], slv_reqs[i][0])
-    `ACE_ASSIGN_RESP_STRUCT(slv_resps[i][0], mst_resps[i])
-end    
 
-// connection reqs and resps for shareable transactions with CCU 
-for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_shared_conn
-    `ACE_ASSIGN_REQ_STRUCT(ccu_reqs_i[i], slv_reqs[i][1])
-    `ACE_ASSIGN_RESP_STRUCT(slv_resps[i][1], ccu_resps_o[i])
-end  
+  // ACE MUX
+  axi_mux #(
+    .SlvAxiIDWidth ( Cfg.AxiIdWidthSlvPorts ), // ID width of the slave ports
+    .slv_aw_chan_t ( slv_aw_chan_t          ), // AW Channel Type, slave ports
+    .mst_aw_chan_t ( mst_stg_aw_chan_t      ), // AW Channel Type, master port
+    .w_chan_t      ( w_chan_t               ), //  W Channel Type, all ports
+    .slv_b_chan_t  ( slv_b_chan_t           ), //  B Channel Type, slave ports
+    .mst_b_chan_t  ( mst_stg_b_chan_t       ), //  B Channel Type, master port
+    .slv_ar_chan_t ( slv_ar_chan_t          ), // AR Channel Type, slave ports
+    .mst_ar_chan_t ( mst_stg_ar_chan_t      ), // AR Channel Type, master port
+    .slv_r_chan_t  ( slv_r_chan_t           ), //  R Channel Type, slave ports
+    .mst_r_chan_t  ( mst_stg_r_chan_t       ), //  R Channel Type, master port
+    .slv_req_t     ( slv_req_t              ),
+    .slv_resp_t    ( slv_resp_t             ),
+    .mst_req_t     ( mst_stg_req_t          ),
+    .mst_resp_t    ( mst_stg_resp_t         ),
+    .NoSlvPorts    ( Cfg.NoSlvPorts         ), // Number of Masters for the modules
+    .MaxWTrans     ( Cfg.MaxMstTrans        ),
+   // .FallThrough   ( Cfg.FallThrough        ),
+    .SpillAw       ( Cfg.LatencyMode[4]     ),
+    .SpillW        ( Cfg.LatencyMode[3]     ),
+    .SpillB        ( Cfg.LatencyMode[2]     ),
+    .SpillAr       ( Cfg.LatencyMode[1]     ),
+    .SpillR        ( Cfg.LatencyMode[0]     )
+  ) i_ace_mux (
+    .clk_i,   // Clock
+    .rst_ni,  // Asynchronous reset active low
+    .test_i,  // Test Mode enable
+    .slv_reqs_i    ( slv_ports_req_i        ),
+    .slv_resps_o   ( slv_ports_resp_o       ),
+    .mst_req_o     ( ace_mux_req_o          ),
+    .mst_resp_i    ( ace_mux_resp_i         )
+  );
 
-axi_mux #(
-  .SlvAxiIDWidth ( Cfg.AxiIdWidthSlvPorts ), // ID width of the slave ports
-  .slv_aw_chan_t ( slv_aw_chan_t          ), // AW Channel Type, slave ports
-  .mst_aw_chan_t ( mst_stg_aw_chan_t      ), // AW Channel Type, master port
-  .w_chan_t      ( w_chan_t               ), //  W Channel Type, all ports
-  .slv_b_chan_t  ( slv_b_chan_t           ), //  B Channel Type, slave ports
-  .mst_b_chan_t  ( mst_stg_b_chan_t       ), //  B Channel Type, master port
-  .slv_ar_chan_t ( slv_ar_chan_t          ), // AR Channel Type, slave ports
-  .mst_ar_chan_t ( mst_stg_ar_chan_t      ), // AR Channel Type, master port
-  .slv_r_chan_t  ( slv_r_chan_t           ), //  R Channel Type, slave ports
-  .mst_r_chan_t  ( mst_stg_r_chan_t       ), //  R Channel Type, master port
-  .slv_req_t     ( slv_req_t              ),
-  .slv_resp_t    ( slv_resp_t             ),
-  .mst_req_t     ( mst_stg_req_t          ),
-  .mst_resp_t    ( mst_stg_resp_t         ),
-  .NoSlvPorts    ( Cfg.NoSlvPorts         ), // Number of Masters for the modules
-  .MaxWTrans     ( Cfg.MaxMstTrans        ),
-  .FallThrough   ( Cfg.FallThrough        ),
-  .SpillAw       ( Cfg.LatencyMode[4]     ),
-  .SpillW        ( Cfg.LatencyMode[3]     ),
-  .SpillB        ( Cfg.LatencyMode[2]     ),
-  .SpillAr       ( Cfg.LatencyMode[1]     ),
-  .SpillR        ( Cfg.LatencyMode[0]     )
-) i_ace_mux (
-  .clk_i,   // Clock
-  .rst_ni,  // Asynchronous reset active low
-  .test_i,  // Test Mode enable
-  .slv_reqs_i  ( ccu_reqs_i       ),
-  .slv_resps_o ( ccu_resps_o      ),
-  .mst_req_o   ( ccu_reqs_mux_o   ),
-  .mst_resp_i  ( ccu_resps_mux_i  )
-);
+  // Transaction Decoder   
+  ace_trs_dec #(
+    .slv_ace_req_t  ( mst_stg_req_t         )
+  ) i_ace_trs_dec (   
+    .slv_reqs_i     ( ace_mux_req_o         ),
+    .snoop_aw_trs   ( aw_select             ),
+    .snoop_ar_trs   ( ar_select             )
+  );
+
+  // ACE Demux
+  axi_demux #(
+    .AxiIdWidth     ( Cfg.AxiIdWidthSlvPorts+$clog2(Cfg.NoSlvPorts) ),  // ID Width
+    .AtopSupport    ( ATOPs                  ),
+    .aw_chan_t      ( mst_stg_aw_chan_t      ),  // AW Channel Type
+    .w_chan_t       ( w_chan_t               ),  //  W Channel Type
+    .b_chan_t       ( mst_stg_b_chan_t       ),  //  B Channel Type
+    .ar_chan_t      ( mst_stg_ar_chan_t      ),  // AR Channel Type
+    .r_chan_t       ( mst_stg_r_chan_t       ),  //  R Channel Type
+    .axi_req_t      ( mst_stg_req_t          ),
+    .axi_resp_t     ( mst_stg_resp_t         ),
+    .NoMstPorts     ( 2                      ),  // one for CCU module and one for mux
+    .MaxTrans       ( Cfg.MaxMstTrans        ),
+    .AxiLookBits    ( Cfg.AxiIdUsedSlvPorts+ $clog2(Cfg.NoSlvPorts) ),
+    .UniqueIds      ( Cfg.UniqueIds          ),
+    .SpillAw        ( Cfg.LatencyMode[9]     ),
+    .SpillW         ( Cfg.LatencyMode[8]     ),
+    .SpillB         ( Cfg.LatencyMode[7]     ),
+    .SpillAr        ( Cfg.LatencyMode[6]     ),
+    .SpillR         ( Cfg.LatencyMode[5]     )
+  ) i_axi_demux (
+    .clk_i,   // Clock
+    .rst_ni,  // Asynchronous reset active low
+    .test_i,  // Testmode enable
+    .slv_req_i       ( ace_mux_req_o         ),
+    .slv_aw_select_i ( aw_select             ),
+    .slv_ar_select_i ( ar_select             ),
+    .slv_resp_o      ( ace_mux_resp_i        ),
+    .mst_reqs_o      ( ace_demux_req_o       ),
+    .mst_resps_i     ( ace_demux_resp_i      )
+  );
+
+  ccu_fsm  
+  #(
+      .NoMstPorts      ( Cfg.NoSlvPorts     ),  
+      .mst_req_t       ( mst_stg_req_t      ),
+      .mst_resp_t      ( mst_stg_resp_t     ),
+      .snoop_req_t     ( snoop_req_t        ),
+      .snoop_resp_t    ( snoop_resp_t       )
+
+  ) fsm (  
+      .clk_i,
+      .rst_ni,
+      .ccu_req_i       ( ace_demux_req_o[1] ),
+      .ccu_resp_o      ( ace_demux_resp_i[1] ),
+      .ccu_req_o       ( ccu_reqs_o         ),
+      .ccu_resp_i      ( ccu_resps_i        ),
+      .s2m_req_o       ( slv_snp_req_o[0]   ),
+      .m2s_resp_i      ( slv_snp_resp_i     )
+  );
+
+  axi_mux #(
+    .SlvAxiIDWidth ( Cfg.AxiIdWidthSlvPorts+$clog2(Cfg.NoSlvPorts) ), // ID width of the slave ports
+    .slv_aw_chan_t ( mst_stg_aw_chan_t      ), // AW Channel Type, slave ports
+    .mst_aw_chan_t ( mst_aw_chan_t          ), // AW Channel Type, master port
+    .w_chan_t      ( w_chan_t               ), //  W Channel Type, all ports
+    .slv_b_chan_t  ( mst_stg_b_chan_t       ), //  B Channel Type, slave ports
+    .mst_b_chan_t  ( mst_b_chan_t           ), //  B Channel Type, master port
+    .slv_ar_chan_t ( mst_stg_ar_chan_t      ), // AR Channel Type, slave ports
+    .mst_ar_chan_t ( mst_ar_chan_t          ), // AR Channel Type, master port
+    .slv_r_chan_t  ( mst_stg_r_chan_t       ), //  R Channel Type, slave ports
+    .mst_r_chan_t  ( mst_r_chan_t           ), //  R Channel Type, master port
+    .slv_req_t     ( mst_stg_req_t          ),
+    .slv_resp_t    ( mst_stg_resp_t         ),
+    .mst_req_t     ( mst_req_t              ),
+    .mst_resp_t    ( mst_resp_t             ),
+    .NoSlvPorts    ( 2                      ), // Number of Masters for the modules
+    .MaxWTrans     ( Cfg.MaxMstTrans        ),
+   .FallThrough   ( Cfg.FallThrough        ),
+    .SpillAw       ( Cfg.LatencyMode[4]     ),
+    .SpillW        ( Cfg.LatencyMode[3]     ),
+    .SpillB        ( Cfg.LatencyMode[2]     ),
+    .SpillAr       ( Cfg.LatencyMode[1]     ),
+    .SpillR        ( Cfg.LatencyMode[0]     )
+  ) i_axi_mux (
+    .clk_i,   // Clock
+    .rst_ni,  // Asynchronous reset active low
+    .test_i,  // Test Mode enable
+    .slv_reqs_i  ( mst_reqs               ),
+    .slv_resps_o ( mst_resps               ),
+    .mst_req_o   ( mst_ports_req_o          ),
+    .mst_resp_i  ( mst_ports_resp_i         )
+  );
 
 
-ccu_fsm  
-#(
-    .NoMstPorts      ( Cfg.NoSlvPorts     ),  
-    .mst_req_t       ( mst_stg_req_t      ),
-    .mst_resp_t      ( mst_stg_resp_t     ),
-    .snoop_req_t     ( snoop_req_t        ),
-    .snoop_resp_t    ( snoop_resp_t       )
+  // connection reqs and resps for non-shareable tarnsactions with axi_mux
+  //`ACE_ASSIGN_REQ_STRUCT(mst_reqs[0], ace_demux_req_o[0])
+  //`ACE_ASSIGN_RESP_STRUCT(ace_demux_resp_i[0], mst_resps[0])   
+  // `ACE_ASSIGN_REQ_STRUCT(mst_reqs[1], ace_demux_req_o[1])
+  // `ACE_ASSIGN_RESP_STRUCT(ace_demux_resp_i[1], mst_resps[1]) 
+  
+  assign mst_reqs[0] = ace_demux_req_o[0];
+  assign ace_demux_resp_i[0] = mst_resps[0];
+  
 
-) fsm (  
-    .clk_i,
-    .rst_ni,
-    .ccu_req_i       ( ccu_reqs_mux_o     ),
-    .ccu_resp_o      ( ccu_resps_mux_i    ),
-    .ccu_req_o       ( ccu_reqs_o         ),
-    .ccu_resp_i      ( ccu_resps_i        ),
-    .s2m_req_o       ( slv_snp_req_o[0]   ),
-    .m2s_resp_i      ( slv_snp_resp_i     )
-);
-
-// connect CCU reqs and resps to mux  
-`ACE_ASSIGN_REQ_STRUCT(mst_reqs[Cfg.NoSlvPorts], ccu_reqs_o)
-`ACE_ASSIGN_RESP_STRUCT(ccu_resps_i, mst_resps[Cfg.NoSlvPorts])
-      
+  // connection reqs and resps for shareable transactions with CCU 
+  //`ACE_ASSIGN_REQ_STRUCT(mst_reqs[1], ccu_reqs_o)
+  //`ACE_ASSIGN_RESP_STRUCT(ccu_resps_i, mst_resps[1])
+  
+  assign mst_reqs[1] = ccu_reqs_o;
+  assign ccu_resps_i = mst_resps[1];
+        
 endmodule
 
 
@@ -230,16 +229,16 @@ import cf_math_pkg::idx_width;
   parameter ace_pkg::ccu_cfg_t Cfg      = '0,
   parameter bit ATOPS                   = 1'b1
 ) (
-  input  logic                                                      clk_i,
-  input  logic                                                      rst_ni,
-  input  logic                                                      test_i,
-  SNOOP_BUS.Slave                                                   snoop_ports [Cfg.NoSlvPorts-1:0],
-  ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
-  AXI_BUS.Master                                                    mst_ports 
+  input  logic                             clk_i,
+  input  logic                             rst_ni,
+  input  logic                             test_i,
+  SNOOP_BUS.Slave                          snoop_ports [Cfg.NoSlvPorts-1:0],
+  ACE_BUS.Slave                            slv_ports [Cfg.NoSlvPorts-1:0],
+  AXI_BUS.Master                           mst_ports 
 );
 
   localparam int unsigned AxiIdWidthMstPortsStage = Cfg.AxiIdWidthSlvPorts +$clog2(Cfg.NoSlvPorts);
-  localparam int unsigned AxiIdWidthMstPorts = AxiIdWidthMstPortsStage + $clog2(Cfg.NoSlvPorts+1);
+  localparam int unsigned AxiIdWidthMstPorts = AxiIdWidthMstPortsStage +1;
 
   typedef logic [AxiIdWidthMstPortsStage-1:0] id_mst_stg_t;
   typedef logic [AxiIdWidthMstPorts     -1:0] id_mst_t;
