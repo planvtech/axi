@@ -68,8 +68,8 @@ import cf_math_pkg::idx_width;
   logic                    aw_select, ar_select;
 
   // signals to AXI MUX
-  mst_req_t       [1:0]    mst_reqs;
-  mst_resp_t      [1:0]    mst_resps;
+  mst_stg_req_t       [1:0]    mst_reqs;
+  mst_stg_resp_t      [1:0]    mst_resps;
 
 
 
@@ -184,7 +184,7 @@ import cf_math_pkg::idx_width;
     .mst_resp_t    ( mst_resp_t             ),
     .NoSlvPorts    ( 2                      ), // Number of Masters for the modules
     .MaxWTrans     ( Cfg.MaxMstTrans        ),
-   .FallThrough   ( Cfg.FallThrough        ),
+    .FallThrough   ( Cfg.FallThrough        ),
     .SpillAw       ( Cfg.LatencyMode[4]     ),
     .SpillW        ( Cfg.LatencyMode[3]     ),
     .SpillB        ( Cfg.LatencyMode[2]     ),
@@ -194,27 +194,19 @@ import cf_math_pkg::idx_width;
     .clk_i,   // Clock
     .rst_ni,  // Asynchronous reset active low
     .test_i,  // Test Mode enable
-    .slv_reqs_i  ( mst_reqs               ),
-    .slv_resps_o ( mst_resps               ),
+    .slv_reqs_i  ( mst_reqs                 ),
+    .slv_resps_o ( mst_resps                ),
     .mst_req_o   ( mst_ports_req_o          ),
     .mst_resp_i  ( mst_ports_resp_i         )
   );
 
 
   // connection reqs and resps for non-shareable tarnsactions with axi_mux
-  //`ACE_ASSIGN_REQ_STRUCT(mst_reqs[0], ace_demux_req_o[0])
-  //`ACE_ASSIGN_RESP_STRUCT(ace_demux_resp_i[0], mst_resps[0])   
-  // `ACE_ASSIGN_REQ_STRUCT(mst_reqs[1], ace_demux_req_o[1])
-  // `ACE_ASSIGN_RESP_STRUCT(ace_demux_resp_i[1], mst_resps[1]) 
-  
   assign mst_reqs[0] = ace_demux_req_o[0];
   assign ace_demux_resp_i[0] = mst_resps[0];
   
 
   // connection reqs and resps for shareable transactions with CCU 
-  //`ACE_ASSIGN_REQ_STRUCT(mst_reqs[1], ccu_reqs_o)
-  //`ACE_ASSIGN_RESP_STRUCT(ccu_resps_i, mst_resps[1])
-  
   assign mst_reqs[1] = ccu_reqs_o;
   assign ccu_resps_i = mst_resps[1];
         
