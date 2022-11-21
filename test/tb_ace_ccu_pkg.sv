@@ -33,6 +33,7 @@ package tb_ace_ccu_pkg;
     typedef logic [AxiAddrWidth-1:0]      axi_addr_t;
 
     typedef logic [$clog2(NoMasters)-1:0] idx_mst_t;
+    typedef logic [$clog2(NoMasters+1)-1:0] idx_mst_plus1_t;
     typedef int unsigned                  idx_slv_t; // from rule_t
 
     typedef struct packed {
@@ -167,8 +168,8 @@ package tb_ace_ccu_pkg;
                    slv_axi_len:  masters_axi[i].aw_len   };
         this.exp_aw_queue[to_slave_idx].push(exp_aw_id, exp_aw);
         incr_expected_tests(3);
-        $display("%0tns > Master %0d: AW to Slave %0d: Axi ID: %b",
-            $time, i, to_slave_idx, masters_axi[i].aw_id);
+        $display("%0tns > Master %0d: AW to Slave %0d: Axi ID: %b %x",
+                 $time, i, to_slave_idx, masters_axi[i].aw_id, masters_axi[i].aw_len);
         // populate the expected b queue anyway
         exp_b = '{mst_axi_id: masters_axi[i].aw_id, last: 1'b1};
         this.exp_b_queue[i].push(masters_axi[i].aw_id, exp_b);
@@ -194,17 +195,29 @@ package tb_ace_ccu_pkg;
     // amount of W beats in the respective fifo. Emphasis of the last flag.
     task automatic monitor_slv_aw(input int unsigned i);
       exp_ax_t    exp_aw;
+       slv_axi_id_t exp_aw_id;
       slave_exp_t exp_slv_w;
       //  $display("%0t > Was triggered: aw_valid %b, aw_ready: %b",
       //       $time(), slaves_axi[i].aw_valid, slaves_axi[i].aw_ready);
       if (slaves_axi[i].aw_valid && slaves_axi[i].aw_ready) begin
         // test if the aw beat was expected
-        exp_aw = this.exp_aw_queue[i].pop_id(slaves_axi[i].aw_id);
+        if (((slaves_axi[i].aw_id >> AxiIdWidthMasters) >> $clog2(NoMasters)) == NoMasters) begin
+           slv_axi_id_t tmp;
+           tmp = slaves_axi[i].aw_id[AxiIdWidthSlaves-$clog2(NoMasters+1)-1:0];
+           exp_aw = this.exp_aw_queue[i].pop_id(tmp);
+           exp_aw_id = {idx_mst_plus1_t'(NoMasters), exp_aw.slv_axi_id[$clog2(NoMasters)+AxiIdWidthMasters-1:0]};
+        end
+        else begin
+           slv_axi_id_t tmp;
+           tmp = {slaves_axi[i].aw_id[AxiIdWidthSlaves-1:AxiIdWidthSlaves-$clog2(NoMasters+1)], slaves_axi[i].aw_id[AxiIdWidthMasters-1:0]};
+           exp_aw = this.exp_aw_queue[i].pop_id(tmp);
+           exp_aw_id = {exp_aw.slv_axi_id[$clog2(NoMasters)+AxiIdWidthMasters-1:AxiIdWidthMasters], idx_mst_t'(0), exp_aw.slv_axi_id[AxiIdWidthMasters-1:0]};
+        end
         $display("%0tns > Slave  %0d: AW Axi ID: %b",
             $time, i, slaves_axi[i].aw_id);
-        if (exp_aw.slv_axi_id != slaves_axi[i].aw_id) begin
+        if (exp_aw_id != slaves_axi[i].aw_id) begin
           incr_failed_tests(1);
-          $warning("Slave %0d: Unexpected AW with ID: %b", i, slaves_axi[i].aw_id);
+           $warning("Slave %0d: Unexpected AW with ID: %b", i, slaves_axi[i].aw_id);
         end
         if (exp_aw.slv_axi_addr != slaves_axi[i].aw_addr) begin
           incr_failed_tests(1);
@@ -213,8 +226,8 @@ package tb_ace_ccu_pkg;
         end
         if (exp_aw.slv_axi_len != slaves_axi[i].aw_len) begin
           incr_failed_tests(1);
-          $warning("Slave %0d: Unexpected AW with ID: %b and LEN: %h, exp: %h",
-              i, slaves_axi[i].aw_id, slaves_axi[i].aw_len, exp_aw.slv_axi_len);
+          $warning("Slave %0d: Unexpected AW with ID: %b and LEN: %h, exp: %h %b",
+                   i, slaves_axi[i].aw_id, slaves_axi[i].aw_len, exp_aw.slv_axi_len, exp_aw.slv_axi_id);
         end
         incr_conducted_tests(3);
 
