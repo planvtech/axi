@@ -227,10 +227,14 @@ module ccu_fsm
 
         WRITE_MEM: begin
             // wait for responding slave to send b_valid
-            if(!(ccu_resp_i.b_valid && ccu_req_i.b_ready)) begin
-                state_d = WRITE_MEM;
+            if((ccu_resp_i.b_valid && ccu_req_i.b_ready)) begin
+                  if(ccu_req_holder.aw.atop == axi_pkg::ATOP_ATOMICSWAP || ccu_req_holder.aw.atop == axi_pkg::ATOP_ATOMICCMP|| ccu_req_holder.aw.atop[5:4] == axi_pkg::ATOP_ATOMICLOAD) begin
+                    state_d = READ_MEM;
+                  end else begin
+                      state_d = IDLE;
+                  end
             end else begin
-                state_d = IDLE;
+                state_d = WRITE_MEM;
             end
         end
 

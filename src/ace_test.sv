@@ -765,7 +765,7 @@ endclass
         // Randomize address.  Make sure that the burst does not cross a 4KiB boundary.
         forever begin
           // Randomize burst length.
-          len = this.max_len;
+          len = $urandom_range(0,this.max_len);
           // rand_success = std::randomize(len) with {
           //   len <= this.max_len;
           //   (ax_beat.ax_burst == BURST_WRAP) ->

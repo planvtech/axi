@@ -10,457 +10,481 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 //
-// Authors:
-// - Florian Zaruba <zarubaf@iis.ee.ethz.ch>
-// - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
-// Directed Random Verification Testbench for `axi_xbar`:  The crossbar is instantiated with
-// a number of random axi master and slave modules.  Each random master executes a fixed number of
-// writes and reads over the whole addess map.  All masters simultaneously issue transactions
-// through the crossbar, thereby saturating it.  A monitor, which snoops the transactions of each
-// master and slave port and models the crossbar with a network of FIFOs, checks whether each
-// transaction follows the expected route.
+// `ace_ccu_monitor` implements an ACE bus monitor that is tuned for the ACE CCU.
+// It snoops on each of the slaves and master ports of the CCU and
+// populates FIFOs and ID queues to validate that no AXI beats get
+// lost or sent to the wrong destination.
 
-`include "ace/typedef.svh"
-`include "ace/assign.svh"
+package tb_ace_ccu_pkg;
+  class ace_ccu_monitor #(
+    parameter int unsigned AxiAddrWidth,
+    parameter int unsigned AxiDataWidth,
+    parameter int unsigned AxiIdWidthMasters,
+    parameter int unsigned AxiIdWidthSlaves,
+    parameter int unsigned AxiUserWidth,
+    parameter int unsigned NoMasters,
+    parameter int unsigned NoSlaves,
+      // Stimuli application and test time
+    parameter time  TimeTest
+  );
+    typedef logic [AxiIdWidthMasters-1:0] mst_axi_id_t;
+    typedef logic [AxiIdWidthSlaves-1:0]  slv_axi_id_t;
+    typedef logic [AxiAddrWidth-1:0]      axi_addr_t;
 
-module tb_ace_ccu_top #(
-  parameter bit TbEnAtop = 1'b1,            // enable atomic operations (ATOPs)
-  parameter bit TbEnExcl = 1'b0,            // enable exclusive accesses
-  parameter bit TbUniqueIds = 1'b0,         // restrict to only unique IDs
-  parameter int unsigned TbNumMst = 32'd4,  // how many AXI masters there are
-  parameter int unsigned TbNumSlv = 32'd1   // how many AXI slaves there are
-);
-  // Random master no Transactions
-  localparam int unsigned NoWrites = 80;   // How many writes per master
-  localparam int unsigned NoReads  = 80;   // How many reads per master
-  // timing parameters
-  localparam time CyclTime = 10ns;
-  localparam time ApplTime =  2ns;
-  localparam time TestTime =  8ns;
+    typedef logic [$clog2(NoMasters)-1:0] idx_mst_t;
+    typedef logic [$clog2(NoMasters+1)-1:0] idx_mst_plus1_t;
+    typedef int unsigned                  idx_slv_t; // from rule_t
 
-  // axi configuration
-  localparam int unsigned AxiIdWidthMasters =  4;
-  localparam int unsigned AxiIdUsed         =  3; // Has to be <= AxiIdWidthMasters
-  localparam int unsigned AxiIdWidthSlaves  =  AxiIdWidthMasters + $clog2(TbNumMst)+$clog2(TbNumMst+1);
-  localparam int unsigned AxiAddrWidth      =  32;    // Axi Address Width
-  localparam int unsigned AxiDataWidth      =  64;    // Axi Data Width
-  localparam int unsigned AxiStrbWidth      =  AxiDataWidth / 8;
-  localparam int unsigned AxiUserWidth      =  5;
+    typedef struct packed {
+      mst_axi_id_t mst_axi_id;
+      logic        last;
+    } master_exp_t;
+    typedef struct packed {
+      slv_axi_id_t   slv_axi_id;
+      axi_addr_t     slv_axi_addr;
+      axi_pkg::len_t slv_axi_len;
+    } exp_ax_t;
+    typedef struct packed {
+      slv_axi_id_t slv_axi_id;
+      logic        last;
+    } slave_exp_t;
 
-  // in the bench can change this variables which are set here freely
-  localparam ace_pkg::ccu_cfg_t ccu_cfg = '{
-    NoSlvPorts:         TbNumMst,
-    MaxMstTrans:        10,
-    MaxSlvTrans:        6,
-    FallThrough:        1'b1,
-    LatencyMode:        ace_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: AxiIdWidthMasters,
-    AxiIdUsedSlvPorts:  AxiIdUsed,
-    UniqueIds:          TbUniqueIds,
-    AxiAddrWidth:       AxiAddrWidth,
-    AxiDataWidth:       AxiDataWidth
-  };
+    typedef rand_id_queue_pkg::rand_id_queue #(
+      .data_t   ( master_exp_t      ),
+      .ID_WIDTH ( AxiIdWidthMasters )
+    ) master_exp_queue_t;
+    typedef rand_id_queue_pkg::rand_id_queue #(
+      .data_t   ( exp_ax_t         ),
+      .ID_WIDTH ( AxiIdWidthSlaves )
+    ) ax_queue_t;
 
+    typedef rand_id_queue_pkg::rand_id_queue #(
+      .data_t   ( slave_exp_t      ),
+      .ID_WIDTH ( AxiIdWidthSlaves )
+    ) slave_exp_queue_t;
 
-  typedef logic [AxiIdWidthMasters-1:0] id_mst_t;
-  typedef logic [AxiIdWidthSlaves-1:0]  id_slv_t;
-  typedef logic [AxiAddrWidth-1:0]      addr_t;
-  typedef logic [AxiDataWidth-1:0]      data_t;
-  typedef logic [AxiStrbWidth-1:0]      strb_t;
-  typedef logic [AxiUserWidth-1:0]      user_t;
+    //-----------------------------------------
+    // Monitoring virtual interfaces
+    //-----------------------------------------
+    virtual ACE_BUS_DV #(
+      .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
+      .AXI_DATA_WIDTH ( AxiDataWidth      ),
+      .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
+      .AXI_USER_WIDTH ( AxiUserWidth      )
+    ) masters_axi [NoMasters-1:0];
+    virtual AXI_BUS_DV #(
+      .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
+      .AXI_DATA_WIDTH ( AxiDataWidth      ),
+      .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
+      .AXI_USER_WIDTH ( AxiUserWidth      )
+    ) slaves_axi [NoSlaves-1:0];
+    //-----------------------------------------
+    // Queues and FIFOs to hold the expected ids
+    //-----------------------------------------
+    // Write transactions
+    ax_queue_t         exp_aw_queue [NoSlaves-1:0];
+    slave_exp_t        exp_w_fifo   [NoSlaves-1:0][$];
+    slave_exp_t        act_w_fifo   [NoSlaves-1:0][$];
+    master_exp_queue_t exp_b_queue  [NoMasters-1:0];
 
-  `ACE_TYPEDEF_AW_CHAN_T(aw_chan_mst_t, addr_t, id_mst_t, user_t)
-  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_slv_t, addr_t, id_slv_t, user_t)
-  `AXI_TYPEDEF_W_CHAN_T(w_chan_t, data_t, strb_t, user_t)
-  `AXI_TYPEDEF_B_CHAN_T(b_chan_mst_t, id_mst_t, user_t)
-  `AXI_TYPEDEF_B_CHAN_T(b_chan_slv_t, id_slv_t, user_t)
+    // Read transactions
+    ax_queue_t            exp_ar_queue  [NoSlaves-1:0];
+    master_exp_queue_t    exp_r_queue  [NoMasters-1:0];
 
-  `ACE_TYPEDEF_AR_CHAN_T(ar_chan_mst_t, addr_t, id_mst_t, user_t)
-  `AXI_TYPEDEF_AR_CHAN_T(ar_chan_slv_t, addr_t, id_slv_t, user_t)
-  `ACE_TYPEDEF_R_CHAN_T(r_chan_mst_t, data_t, id_mst_t, user_t)
-  `AXI_TYPEDEF_R_CHAN_T(r_chan_slv_t, data_t, id_slv_t, user_t)
+    //-----------------------------------------
+    // Bookkeeping
+    //-----------------------------------------
+    longint unsigned tests_expected;
+    longint unsigned tests_conducted;
+    longint unsigned tests_failed;
+    semaphore        cnt_sem;
 
-  `ACE_TYPEDEF_REQ_T(mst_req_t, aw_chan_mst_t, w_chan_t, ar_chan_mst_t)
-  `ACE_TYPEDEF_RESP_T(mst_resp_t, b_chan_mst_t, r_chan_mst_t)
-  `AXI_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
-  `AXI_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
-
-  `SNOOP_TYPEDEF_AC_CHAN_T(snoop_ac_t, addr_t)
-  `SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, data_t)  
-  `SNOOP_TYPEDEF_CR_CHAN_T(snoop_cr_t)  
-  `SNOOP_TYPEDEF_REQ_T(snoop_req_t, snoop_ac_t)
-  `SNOOP_TYPEDEF_RESP_T(snoop_resp_t, snoop_cd_t, snoop_cr_t)
-
-
-  typedef ace_test::ace_rand_master #(
-    // AXI interface parameters
-    .AW ( AxiAddrWidth       ),
-    .DW ( AxiDataWidth       ),
-    .IW ( AxiIdWidthMasters  ),
-    .UW ( AxiUserWidth       ),
-    // Stimuli application and test time
-    .TA ( ApplTime           ),
-    .TT ( TestTime           ),
-    // Maximum number of read and write transactions in flight
-    .MAX_READ_TXNS  ( 20     ),
-    .MAX_WRITE_TXNS ( 20     ),
-    .AXI_EXCLS      ( TbEnExcl ),
-    .AXI_ATOPS      ( TbEnAtop ),
-    .UNIQUE_IDS     ( TbUniqueIds )
-  ) ace_rand_master_t;
-  typedef axi_test::axi_rand_slave #(
-    // AXI interface parameters
-    .AW ( AxiAddrWidth     ),
-    .DW ( AxiDataWidth     ),
-    .IW ( AxiIdWidthSlaves ),
-    .UW ( AxiUserWidth     ),
-    // Stimuli application and test time
-    .TA ( ApplTime         ),
-    .TT ( TestTime         )
-  ) axi_rand_slave_t;
-
-  // -------------
-  // DUT signals
-  // -------------
-  logic clk;
-  // DUT signals
-  logic rst_n;
-  logic [TbNumMst-1:0] end_of_sim;
-
-  // master structs
-  mst_req_t  [TbNumMst-1:0] masters_req;
-  mst_resp_t [TbNumMst-1:0] masters_resp;
-
-  // slave structs
-  slv_req_t  [TbNumSlv-1:0] slaves_req;
-  slv_resp_t [TbNumSlv-1:0] slaves_resp;
-
-  // snoop structs
-  snoop_req_t  [TbNumMst-1:0] snoop_req;
-  snoop_resp_t [TbNumMst-1:0] snoop_resp;
-
-
-  // -------------------------------
-  // AXI Interfaces
-  // -------------------------------
-  ACE_BUS #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
-    .AXI_DATA_WIDTH ( AxiDataWidth      ),
-    .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
-    .AXI_USER_WIDTH ( AxiUserWidth      )
-  ) master [TbNumMst-1:0] ();
-  ACE_BUS_DV #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
-    .AXI_DATA_WIDTH ( AxiDataWidth      ),
-    .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
-    .AXI_USER_WIDTH ( AxiUserWidth      )
-  ) master_dv [TbNumMst-1:0] (clk);
-  ACE_BUS_DV #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
-    .AXI_DATA_WIDTH ( AxiDataWidth      ),
-    .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
-    .AXI_USER_WIDTH ( AxiUserWidth      )
-  ) master_monitor_dv [TbNumMst-1:0] (clk);
-  for (genvar i = 0; i < TbNumMst; i++) begin : gen_conn_dv_masters
-    `ACE_ASSIGN (master[i], master_dv[i])
-    `ACE_ASSIGN_TO_REQ(masters_req[i], master[i])
-    `ACE_ASSIGN_TO_RESP(masters_resp[i], master[i])
-  end
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
-    .AXI_USER_WIDTH ( AxiUserWidth     )
-  ) slave [TbNumSlv-1:0] ();
-  AXI_BUS_DV #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
-    .AXI_USER_WIDTH ( AxiUserWidth     )
-  ) slave_dv [TbNumSlv-1:0](clk);
-  AXI_BUS_DV #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
-    .AXI_USER_WIDTH ( AxiUserWidth     )
-  ) slave_monitor_dv [TbNumSlv-1:0](clk);
-  for (genvar i = 0; i < TbNumSlv; i++) begin : gen_conn_dv_slaves
-    `AXI_ASSIGN(slave_dv[i], slave[i])
-    `AXI_ASSIGN_TO_REQ(slaves_req[i], slave[i])
-    `AXI_ASSIGN_TO_RESP(slaves_resp[i], slave[i])
-  end
-
-  SNOOP_BUS #(
-    .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
-    .SNOOP_DATA_WIDTH ( AxiDataWidth      )
-  ) snoop [TbNumMst-1:0] ();
-  SNOOP_BUS_DV #(
-    .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
-    .SNOOP_DATA_WIDTH ( AxiDataWidth      )
-  ) snoop_dv [TbNumMst-1:0](clk);
-  SNOOP_BUS_DV #(
-    .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
-    .SNOOP_DATA_WIDTH ( AxiDataWidth      )
-  ) snoop_monior_dv [TbNumMst-1:0](clk);
-   for (genvar i = 0; i < TbNumMst; i++) begin : gen_conn_dv_snoop
-    `SNOOP_ASSIGN(snoop_dv[i], snoop[i])
-    `SNOOP_ASSIGN_TO_REQ(snoop_req[i], snoop[i])
-    `SNOOP_ASSIGN_TO_RESP(snoop_resp[i], snoop[i])
-  end
-
-  // -------------------------------
-  // AXI Rand Masters and Slaves
-  // -------------------------------
-  // Masters control simulation run time
-  ace_rand_master_t ace_rand_master [TbNumMst];
-  for (genvar i = 0; i < TbNumMst; i++) begin : gen_rand_master
-    initial begin
-      ace_rand_master[i] = new( master_dv[i] );
-      end_of_sim[i] <= 1'b0;
-      ace_rand_master[i].add_memory_region(32'h0000_0000, 32'h0000_3000,
-                                      axi_pkg::DEVICE_NONBUFFERABLE);
-      ace_rand_master[i].reset();
-      @(posedge rst_n);
-      ace_rand_master[i].run(NoReads, NoWrites);
-      end_of_sim[i] <= 1'b1;
-    end
-  end
-
-  axi_rand_slave_t axi_rand_slave [1];
-  for (genvar i = 0; i < TbNumSlv; i++) begin : gen_rand_slave
-    initial begin
-      axi_rand_slave[i] = new( slave_dv[i] );
-      axi_rand_slave[i].reset();
-      @(posedge rst_n);
-      axi_rand_slave[i].run();
-    end
-  end
-
-  initial begin : proc_monitor
-    static tb_ace_ccu_pkg::ace_ccu_monitor #(
-      .AxiAddrWidth      ( AxiAddrWidth         ),
-      .AxiDataWidth      ( AxiDataWidth         ),
-      .AxiIdWidthMasters ( AxiIdWidthMasters    ),
-      .AxiIdWidthSlaves  ( AxiIdWidthSlaves     ),
-      .AxiUserWidth      ( AxiUserWidth         ),
-      .NoMasters         ( TbNumMst            ),
-      .NoSlaves          ( TbNumSlv             ),
-      .TimeTest          ( TestTime             )
-    ) monitor = new( master_monitor_dv, slave_monitor_dv );
-    fork
-      monitor.run();
-      do begin
-        #TestTime;
-        if(end_of_sim == '1) begin
-          monitor.print_result();
-          $stop();
+    //-----------------------------------------
+    // Constructor
+    //-----------------------------------------
+    function new(
+      virtual ACE_BUS_DV #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
+        .AXI_DATA_WIDTH ( AxiDataWidth      ),
+        .AXI_ID_WIDTH   ( AxiIdWidthMasters ),
+        .AXI_USER_WIDTH ( AxiUserWidth      )
+      ) axi_masters_vif [NoMasters-1:0],
+      virtual AXI_BUS_DV #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
+        .AXI_DATA_WIDTH ( AxiDataWidth      ),
+        .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
+        .AXI_USER_WIDTH ( AxiUserWidth      )
+      ) axi_slaves_vif [NoSlaves-1:0]
+     );
+      begin
+        this.masters_axi     = axi_masters_vif;
+        this.slaves_axi      = axi_slaves_vif;
+        this.tests_expected  = 0;
+        this.tests_conducted = 0;
+        this.tests_failed    = 0;
+        for (int unsigned i = 0; i < NoMasters; i++) begin
+          this.exp_b_queue[i] = new;
+          this.exp_r_queue[i] = new;
         end
-        @(posedge clk);
-      end while (1'b1);
-    join
-  end
+        for (int unsigned i = 0; i < NoSlaves; i++) begin
+          this.exp_aw_queue[i] = new;
+          this.exp_ar_queue[i] = new;
+        end
+        this.cnt_sem = new(1);
+      end
+    endfunction
 
-  //-----------------------------------
-  // Clock generator
-  //-----------------------------------
-    clk_rst_gen #(
-    .ClkPeriod    ( CyclTime ),
-    .RstClkCycles ( 5        )
-  ) i_clk_gen (
-    .clk_o (clk),
-    .rst_no(rst_n)
-  );
+    // when start the testing
+    task cycle_start;
+      #TimeTest;
+    endtask
 
-  //-----------------------------------
-  // DUT
-  //-----------------------------------
-  ace_ccu_top_intf #(
-    .AXI_USER_WIDTH ( AxiUserWidth  ),
-    .Cfg            ( ccu_cfg      )
-  ) i_ccu_dut (
-    .clk_i                  ( clk     ),
-    .rst_ni                 ( rst_n   ),
-    .test_i                 ( 1'b0    ),
-    .snoop_ports            ( snoop   ),
-    .slv_ports              ( master  ),
-    .mst_ports              ( slave[0]   )
-  );
+    // when is cycle finished
+    task cycle_end;
+      @(posedge masters_axi[0].clk_i);
+    endtask
 
-  // logger for master modules
-  for (genvar i = 0; i < TbNumMst; i++) begin : gen_master_logger
-    ace_chan_logger #(
-      .TestTime  ( TestTime      ), // Time after clock, where sampling happens
-      .LoggerName( $sformatf("axi_logger_master_%0d", i)),
-      .aw_chan_t ( aw_chan_mst_t ), // axi AW type
-      .w_chan_t  (  w_chan_t     ), // axi  W type
-      .b_chan_t  (  b_chan_mst_t ), // axi  B type
-      .ar_chan_t ( ar_chan_mst_t ), // axi AR type
-      .r_chan_t  (  r_chan_mst_t )  // axi  R type
-    ) i_mst_channel_logger (
-      .clk_i      ( clk         ),    // Clock
-      .rst_ni     ( rst_n       ),    // Asynchronous reset active low, when `1'b0` no sampling
-      .end_sim_i  ( &end_of_sim ),
-      // AW channel
-      .aw_chan_i  ( masters_req[i].aw        ),
-      .aw_valid_i ( masters_req[i].aw_valid  ),
-      .aw_ready_i ( masters_resp[i].aw_ready ),
-      //  W channel
-      .w_chan_i   ( masters_req[i].w         ),
-      .w_valid_i  ( masters_req[i].w_valid   ),
-      .w_ready_i  ( masters_resp[i].w_ready  ),
-      //  B channel
-      .b_chan_i   ( masters_resp[i].b        ),
-      .b_valid_i  ( masters_resp[i].b_valid  ),
-      .b_ready_i  ( masters_req[i].b_ready   ),
-      // AR channel
-      .ar_chan_i  ( masters_req[i].ar        ),
-      .ar_valid_i ( masters_req[i].ar_valid  ),
-      .ar_ready_i ( masters_resp[i].ar_ready ),
-      //  R channel
-      .r_chan_i   ( masters_resp[i].r        ),
-      .r_valid_i  ( masters_resp[i].r_valid  ),
-      .r_ready_i  ( masters_req[i].r_ready   )
-    );
-  end
-  // logger for slave modules
-  for (genvar i = 0; i < 1; i++) begin : gen_slave_logger
-    axi_chan_logger #(
-      .TestTime  ( TestTime      ), // Time after clock, where sampling happens
-      .LoggerName( $sformatf("axi_logger_slave_%0d",i)),
-      .aw_chan_t ( aw_chan_slv_t ), // axi AW type
-      .w_chan_t  (  w_chan_t     ), // axi  W type
-      .b_chan_t  (  b_chan_slv_t ), // axi  B type
-      .ar_chan_t ( ar_chan_slv_t ), // axi AR type
-      .r_chan_t  (  r_chan_slv_t )  // axi  R type
-    ) i_slv_channel_logger (
-      .clk_i      ( clk         ),    // Clock
-      .rst_ni     ( rst_n       ),    // Asynchronous reset active low, when `1'b0` no sampling
-      .end_sim_i  ( &end_of_sim ),
-      // AW channel
-      .aw_chan_i  ( slaves_req[i].aw        ),
-      .aw_valid_i ( slaves_req[i].aw_valid  ),
-      .aw_ready_i ( slaves_resp[i].aw_ready ),
-      //  W channel
-      .w_chan_i   ( slaves_req[i].w         ),
-      .w_valid_i  ( slaves_req[i].w_valid   ),
-      .w_ready_i  ( slaves_resp[i].w_ready  ),
-      //  B channel
-      .b_chan_i   ( slaves_resp[i].b        ),
-      .b_valid_i  ( slaves_resp[i].b_valid  ),
-      .b_ready_i  ( slaves_req[i].b_ready   ),
-      // AR channel
-      .ar_chan_i  ( slaves_req[i].ar        ),
-      .ar_valid_i ( slaves_req[i].ar_valid  ),
-      .ar_ready_i ( slaves_resp[i].ar_ready ),
-      //  R channel
-      .r_chan_i   ( slaves_resp[i].r        ),
-      .r_valid_i  ( slaves_resp[i].r_valid  ),
-      .r_ready_i  ( slaves_req[i].r_ready   )
-    );
-  end
+    // This task monitors a slave ports of the crossbar. Every time an AW beat is seen
+    // it populates an id queue at the right master port (if there is no expected decode error),
+    // populates the expected b response in its own id_queue and in case when the atomic bit [5]
+    // is set it also injects an expected response in the R channel.
+    task automatic monitor_mst_aw(input int unsigned i);
+      idx_slv_t    to_slave_idx;
+      exp_ax_t     exp_aw;
+      slv_axi_id_t exp_aw_id;
+      bit          decerr;
 
+      master_exp_t exp_b;
 
-  for (genvar i = 0; i < TbNumMst; i++) begin : gen_connect_master_monitor
-    assign master_monitor_dv[i].aw_id       = master[i].aw_id    ;
-    assign master_monitor_dv[i].aw_addr     = master[i].aw_addr  ;
-    assign master_monitor_dv[i].aw_len      = master[i].aw_len   ;
-    assign master_monitor_dv[i].aw_size     = master[i].aw_size  ;
-    assign master_monitor_dv[i].aw_burst    = master[i].aw_burst ;
-    assign master_monitor_dv[i].aw_lock     = master[i].aw_lock  ;
-    assign master_monitor_dv[i].aw_cache    = master[i].aw_cache ;
-    assign master_monitor_dv[i].aw_prot     = master[i].aw_prot  ;
-    assign master_monitor_dv[i].aw_qos      = master[i].aw_qos   ;
-    assign master_monitor_dv[i].aw_region   = master[i].aw_region;
-    assign master_monitor_dv[i].aw_atop     = master[i].aw_atop  ;
-    assign master_monitor_dv[i].aw_user     = master[i].aw_user  ;
-    assign master_monitor_dv[i].aw_valid    = master[i].aw_valid ;
-    assign master_monitor_dv[i].aw_ready    = master[i].aw_ready ;
-    assign master_monitor_dv[i].aw_snoop    = master[i].aw_snoop;
-    assign master_monitor_dv[i].aw_bar      = master[i].aw_bar ;
-    assign master_monitor_dv[i].aw_domain   = master[i].aw_domain ;
-    assign master_monitor_dv[i].aw_awunique = master[i].aw_awunique ;
-    assign master_monitor_dv[i].w_data      = master[i].w_data   ;
-    assign master_monitor_dv[i].w_strb      = master[i].w_strb   ;
-    assign master_monitor_dv[i].w_last      = master[i].w_last   ;
-    assign master_monitor_dv[i].w_user      = master[i].w_user   ;
-    assign master_monitor_dv[i].w_valid     = master[i].w_valid  ;
-    assign master_monitor_dv[i].w_ready     = master[i].w_ready  ;
-    assign master_monitor_dv[i].b_id        = master[i].b_id     ;
-    assign master_monitor_dv[i].b_resp      = master[i].b_resp   ;
-    assign master_monitor_dv[i].b_user      = master[i].b_user   ;
-    assign master_monitor_dv[i].b_valid     = master[i].b_valid  ;
-    assign master_monitor_dv[i].b_ready     = master[i].b_ready  ;
-    assign master_monitor_dv[i].ar_id       = master[i].ar_id    ;
-    assign master_monitor_dv[i].ar_addr     = master[i].ar_addr  ;
-    assign master_monitor_dv[i].ar_len      = master[i].ar_len   ;
-    assign master_monitor_dv[i].ar_size     = master[i].ar_size  ;
-    assign master_monitor_dv[i].ar_burst    = master[i].ar_burst ;
-    assign master_monitor_dv[i].ar_lock     = master[i].ar_lock  ;
-    assign master_monitor_dv[i].ar_cache    = master[i].ar_cache ;
-    assign master_monitor_dv[i].ar_prot     = master[i].ar_prot  ;
-    assign master_monitor_dv[i].ar_qos      = master[i].ar_qos   ;
-    assign master_monitor_dv[i].ar_region   = master[i].ar_region;
-    assign master_monitor_dv[i].ar_user     = master[i].ar_user  ;
-    assign master_monitor_dv[i].ar_valid    = master[i].ar_valid ;
-    assign master_monitor_dv[i].ar_ready    = master[i].ar_ready ;
-    assign master_monitor_dv[i].ar_snoop    = master[i].ar_snoop ;
-    assign master_monitor_dv[i].ar_bar      = master[i].ar_bar ;
-    assign master_monitor_dv[i].ar_domain   = master[i].ar_domain ;
-    assign master_monitor_dv[i].r_id        = master[i].r_id     ;
-    assign master_monitor_dv[i].r_data      = master[i].r_data   ;
-    assign master_monitor_dv[i].r_resp      = master[i].r_resp   ;
-    assign master_monitor_dv[i].r_last      = master[i].r_last   ;
-    assign master_monitor_dv[i].r_user      = master[i].r_user   ;
-    assign master_monitor_dv[i].r_valid     = master[i].r_valid  ;
-    assign master_monitor_dv[i].r_ready     = master[i].r_ready  ;
-  end
-  for (genvar i = 0; i < TbNumSlv; i++) begin : gen_connect_slave_monitor
-    assign slave_monitor_dv[i].aw_id        = slave[i].aw_id    ;
-    assign slave_monitor_dv[i].aw_addr      = slave[i].aw_addr  ;
-    assign slave_monitor_dv[i].aw_len       = slave[i].aw_len   ;
-    assign slave_monitor_dv[i].aw_size      = slave[i].aw_size  ;
-    assign slave_monitor_dv[i].aw_burst     = slave[i].aw_burst ;
-    assign slave_monitor_dv[i].aw_lock      = slave[i].aw_lock  ;
-    assign slave_monitor_dv[i].aw_cache     = slave[i].aw_cache ;
-    assign slave_monitor_dv[i].aw_prot      = slave[i].aw_prot  ;
-    assign slave_monitor_dv[i].aw_qos       = slave[i].aw_qos   ;
-    assign slave_monitor_dv[i].aw_region    = slave[i].aw_region;
-    assign slave_monitor_dv[i].aw_atop      = slave[i].aw_atop  ;
-    assign slave_monitor_dv[i].aw_user      = slave[i].aw_user  ;
-    assign slave_monitor_dv[i].aw_valid     = slave[i].aw_valid ;
-    assign slave_monitor_dv[i].aw_ready     = slave[i].aw_ready ;
-    assign slave_monitor_dv[i].w_data       = slave[i].w_data   ;
-    assign slave_monitor_dv[i].w_strb       = slave[i].w_strb   ;
-    assign slave_monitor_dv[i].w_last       = slave[i].w_last   ;
-    assign slave_monitor_dv[i].w_user       = slave[i].w_user   ;
-    assign slave_monitor_dv[i].w_valid      = slave[i].w_valid  ;
-    assign slave_monitor_dv[i].w_ready      = slave[i].w_ready  ;
-    assign slave_monitor_dv[i].b_id         = slave[i].b_id     ;
-    assign slave_monitor_dv[i].b_resp       = slave[i].b_resp   ;
-    assign slave_monitor_dv[i].b_user       = slave[i].b_user   ;
-    assign slave_monitor_dv[i].b_valid      = slave[i].b_valid  ;
-    assign slave_monitor_dv[i].b_ready      = slave[i].b_ready  ;
-    assign slave_monitor_dv[i].ar_id        = slave[i].ar_id    ;
-    assign slave_monitor_dv[i].ar_addr      = slave[i].ar_addr  ;
-    assign slave_monitor_dv[i].ar_len       = slave[i].ar_len   ;
-    assign slave_monitor_dv[i].ar_size      = slave[i].ar_size  ;
-    assign slave_monitor_dv[i].ar_burst     = slave[i].ar_burst ;
-    assign slave_monitor_dv[i].ar_lock      = slave[i].ar_lock  ;
-    assign slave_monitor_dv[i].ar_cache     = slave[i].ar_cache ;
-    assign slave_monitor_dv[i].ar_prot      = slave[i].ar_prot  ;
-    assign slave_monitor_dv[i].ar_qos       = slave[i].ar_qos   ;
-    assign slave_monitor_dv[i].ar_region    = slave[i].ar_region;
-    assign slave_monitor_dv[i].ar_user      = slave[i].ar_user  ;
-    assign slave_monitor_dv[i].ar_valid     = slave[i].ar_valid ;
-    assign slave_monitor_dv[i].ar_ready     = slave[i].ar_ready ;
-    assign slave_monitor_dv[i].r_id         = slave[i].r_id     ;
-    assign slave_monitor_dv[i].r_data       = slave[i].r_data   ;
-    assign slave_monitor_dv[i].r_resp       = slave[i].r_resp   ;
-    assign slave_monitor_dv[i].r_last       = slave[i].r_last   ;
-    assign slave_monitor_dv[i].r_user       = slave[i].r_user   ;
-    assign slave_monitor_dv[i].r_valid      = slave[i].r_valid  ;
-    assign slave_monitor_dv[i].r_ready      = slave[i].r_ready  ;
-  end
-endmodule
+      if (masters_axi[i].aw_valid && masters_axi[i].aw_ready) begin
+        to_slave_idx = '0;
+        decerr = 1'b0;
+        // send the exp aw beat down into the queue of the slave when no decerror
+        exp_aw_id = {idx_mst_t'(i), masters_axi[i].aw_id};
+        // $display("Test exp aw_id: %b",exp_aw_id);
+        exp_aw = '{slv_axi_id:   exp_aw_id,
+                   slv_axi_addr: masters_axi[i].aw_addr,
+                   slv_axi_len:  masters_axi[i].aw_len   };
+        this.exp_aw_queue[to_slave_idx].push(exp_aw_id, exp_aw);
+        incr_expected_tests(3);
+        $display("%0tns > Master %0d: AW to Slave %0d: Axi ID: %b %x",
+                 $time, i, to_slave_idx, masters_axi[i].aw_id, masters_axi[i].aw_len);
+        // populate the expected b queue anyway
+        exp_b = '{mst_axi_id: masters_axi[i].aw_id, last: 1'b1};
+        this.exp_b_queue[i].push(masters_axi[i].aw_id, exp_b);
+        incr_expected_tests(1);
+        $display("        Expect B response.");
+        // inject expected r beats on this id, if it is an atop
+        if(masters_axi[i].aw_atop[5]) begin
+          // push the required r beats into the right fifo (reuse the exp_b variable)
+          $display("        Expect R response, len: %0d.", masters_axi[i].aw_len);
+          for (int unsigned j = 0; j <= masters_axi[i].aw_len; j++) begin
+            exp_b = (j == masters_axi[i].aw_len) ?
+                '{mst_axi_id: masters_axi[i].aw_id, last: 1'b1} :
+                '{mst_axi_id: masters_axi[i].aw_id, last: 1'b0};
+            this.exp_r_queue[i].push(masters_axi[i].aw_id, exp_b);
+            incr_expected_tests(1);
+          end
+        end
+      end
+    endtask : monitor_mst_aw
+
+    // This task monitors a slave port of the crossbar. Every time there is an AW vector it
+    // gets checked for its contents and if it was expected. The task then pushes an expected
+    // amount of W beats in the respective fifo. Emphasis of the last flag.
+    task automatic monitor_slv_aw(input int unsigned i);
+      exp_ax_t    exp_aw;
+       slv_axi_id_t exp_aw_id;
+      slave_exp_t exp_slv_w;
+      //  $display("%0t > Was triggered: aw_valid %b, aw_ready: %b",
+      //       $time(), slaves_axi[i].aw_valid, slaves_axi[i].aw_ready);
+      if (slaves_axi[i].aw_valid && slaves_axi[i].aw_ready) begin
+        // test if the aw beat was expected
+        if (((slaves_axi[i].aw_id >> AxiIdWidthMasters) >> $clog2(NoMasters)) == NoMasters) begin
+           slv_axi_id_t tmp;
+           tmp = slaves_axi[i].aw_id[AxiIdWidthSlaves-$clog2(NoMasters+1)-1:0];
+           exp_aw = this.exp_aw_queue[i].pop_id(tmp);
+           exp_aw_id = {idx_mst_plus1_t'(NoMasters), exp_aw.slv_axi_id[$clog2(NoMasters)+AxiIdWidthMasters-1:0]};
+        end
+        else begin
+           slv_axi_id_t tmp;
+           tmp = {slaves_axi[i].aw_id[AxiIdWidthSlaves-1:AxiIdWidthSlaves-$clog2(NoMasters+1)], slaves_axi[i].aw_id[AxiIdWidthMasters-1:0]};
+           exp_aw = this.exp_aw_queue[i].pop_id(tmp);
+           exp_aw_id = {exp_aw.slv_axi_id[$clog2(NoMasters)+AxiIdWidthMasters-1:AxiIdWidthMasters], idx_mst_t'(0), exp_aw.slv_axi_id[AxiIdWidthMasters-1:0]};
+        end
+        $display("%0tns > Slave  %0d: AW Axi ID: %b",
+            $time, i, slaves_axi[i].aw_id);
+        if (exp_aw_id != slaves_axi[i].aw_id) begin
+          incr_failed_tests(1);
+           $warning("Slave %0d: Unexpected AW with ID: %b", i, slaves_axi[i].aw_id);
+        end
+        if (exp_aw.slv_axi_addr != slaves_axi[i].aw_addr) begin
+          incr_failed_tests(1);
+          $warning("Slave %0d: Unexpected AW with ID: %b and ADDR: %h, exp: %h",
+              i, slaves_axi[i].aw_id, slaves_axi[i].aw_addr, exp_aw.slv_axi_addr);
+        end
+        if (exp_aw.slv_axi_len != slaves_axi[i].aw_len) begin
+          incr_failed_tests(1);
+          $warning("Slave %0d: Unexpected AW with ID: %b and LEN: %h, exp: %h %b",
+                   i, slaves_axi[i].aw_id, slaves_axi[i].aw_len, exp_aw.slv_axi_len, exp_aw.slv_axi_id);
+        end
+        incr_conducted_tests(3);
+
+        // push the required w beats into the right fifo
+        incr_expected_tests(slaves_axi[i].aw_len + 1);
+        for (int unsigned j = 0; j <= slaves_axi[i].aw_len; j++) begin
+          exp_slv_w = (j == slaves_axi[i].aw_len) ?
+              '{slv_axi_id: slaves_axi[i].aw_id, last: 1'b1} :
+              '{slv_axi_id: slaves_axi[i].aw_id, last: 1'b0};
+          this.exp_w_fifo[i].push_back(exp_slv_w);
+        end
+      end
+    endtask : monitor_slv_aw
+
+    // This task just pushes every W beat that gets sent on a master port in its respective fifo.
+    task automatic monitor_slv_w(input int unsigned i);
+      slave_exp_t     act_slv_w;
+      if (slaves_axi[i].w_valid && slaves_axi[i].w_ready) begin
+        // $display("%0t > W beat on Slave %0d, last flag: %b", $time, i, slaves_axi[i].w_last);
+        act_slv_w = '{last: slaves_axi[i].w_last , default:'0};
+        this.act_w_fifo[i].push_back(act_slv_w);
+      end
+    endtask : monitor_slv_w
+
+    // This task compares the expected and actual W beats on a master port. The reason that
+    // this is not done in `monitor_slv_w` is that there can be per protocol W beats on the
+    // channel, before AW is sent to the slave.
+    task automatic check_slv_w(input int unsigned i);
+      slave_exp_t exp_w, act_w;
+      while (this.exp_w_fifo[i].size() != 0 && this.act_w_fifo[i].size() != 0) begin
+
+        exp_w = this.exp_w_fifo[i].pop_front();
+        act_w = this.act_w_fifo[i].pop_front();
+        // do the check
+        incr_conducted_tests(1);
+        if(exp_w.last != act_w.last) begin
+          incr_failed_tests(1);
+          $warning("Slave %d: unexpected W beat last flag %b, expected: %b.",
+                 i, act_w.last, exp_w.last);
+        end
+      end
+    endtask : check_slv_w
+
+    // This task checks if a B response is allowed on a slave port of the crossbar.
+    task automatic monitor_mst_b(input int unsigned i);
+      master_exp_t exp_b;
+      mst_axi_id_t axi_b_id;
+      if (masters_axi[i].b_valid && masters_axi[i].b_ready) begin
+        incr_conducted_tests(1);
+        axi_b_id = masters_axi[i].b_id;
+        $display("%0tns > Master %0d: Got last B with id: %b",
+                $time, i, axi_b_id);
+        if (this.exp_b_queue[i].empty()) begin
+          incr_failed_tests(1);
+          $warning("Master %d: unexpected B beat with ID: %b detected!", i, axi_b_id);
+        end else begin
+          exp_b = this.exp_b_queue[i].pop_id(axi_b_id);
+          if (axi_b_id != exp_b.mst_axi_id) begin
+            incr_failed_tests(1);
+            $warning("Master: %d got unexpected B with ID: %b", i, axi_b_id);
+          end
+        end
+      end
+    endtask : monitor_mst_b
+
+    // This task monitors the AR channel of a slave port of the crossbar. For each AR it populates
+    // the corresponding ID queue with the number of r beats indicated on the `ar_len` field.
+    // Emphasis on the last flag. We will detect reordering, if the last flags do not match,
+    // as each `random` burst tend to have a different length.
+    task automatic monitor_mst_ar(input int unsigned i);
+      mst_axi_id_t   mst_axi_id;
+      axi_addr_t     mst_axi_addr;
+      axi_pkg::len_t mst_axi_len;
+
+      idx_slv_t      exp_slv_idx;
+      slv_axi_id_t   exp_slv_axi_id;
+      exp_ax_t       exp_slv_ar;
+      master_exp_t   exp_mst_r;
+
+      logic          exp_decerr;
+
+      if (masters_axi[i].ar_valid && masters_axi[i].ar_ready) begin
+        exp_decerr     = 1'b1;
+        mst_axi_id     = masters_axi[i].ar_id;
+        mst_axi_addr   = masters_axi[i].ar_addr;
+        mst_axi_len    = masters_axi[i].ar_len;
+        exp_slv_axi_id = {idx_mst_t'(i), mst_axi_id};
+        exp_slv_idx = '0;
+        exp_decerr  = 1'b0;
+        $display("%0tns > Master %0d: AR to Slave %0d: Axi ID: %b",
+            $time, i, exp_slv_idx, mst_axi_id);
+        // push the expected vectors AW for exp_slv
+        exp_slv_ar = '{slv_axi_id:    exp_slv_axi_id,
+                       slv_axi_addr:  mst_axi_addr,
+                       slv_axi_len:   mst_axi_len     };
+        //$display("Expected Slv Axi Id is: %b", exp_slv_axi_id);
+        this.exp_ar_queue[exp_slv_idx].push(exp_slv_axi_id, exp_slv_ar);
+        incr_expected_tests(1);
+        // push the required r beats into the right fifo
+        $display("        Expect R response, len: %0d.", masters_axi[i].ar_len);
+        for (int unsigned j = 0; j <= mst_axi_len; j++) begin
+          exp_mst_r = (j == mst_axi_len) ? '{mst_axi_id: mst_axi_id, last: 1'b1} :
+                                           '{mst_axi_id: mst_axi_id, last: 1'b0};
+          this.exp_r_queue[i].push(mst_axi_id, exp_mst_r);
+          incr_expected_tests(1);
+        end
+      end
+    endtask : monitor_mst_ar
+
+    // This task monitors a master port of the crossbar and checks if a transmitted AR beat was
+    // expected.
+    task automatic monitor_slv_ar(input int unsigned i);
+      exp_ax_t       exp_slv_ar;
+      slv_axi_id_t   slv_axi_id;
+      if (slaves_axi[i].ar_valid && slaves_axi[i].ar_ready) begin
+        incr_conducted_tests(1);
+        slv_axi_id = slaves_axi[i].ar_id;
+        if (this.exp_ar_queue[i].empty()) begin
+          incr_failed_tests(1);
+        end else begin
+          // check that the ids are the same
+          exp_slv_ar = this.exp_ar_queue[i].pop_id(slv_axi_id);
+          $display("%0tns > Slave  %0d: AR Axi ID: %b", $time, i, slv_axi_id);
+          if (exp_slv_ar.slv_axi_id != slv_axi_id) begin
+            incr_failed_tests(1);
+            $warning("Slave  %d: Unexpected AR with ID: %b", i, slv_axi_id);
+          end
+        end
+      end
+    endtask : monitor_slv_ar
+
+    // This task does the R channel monitoring on a slave port. It compares the last flags,
+    // which are determined by the sequence of previously sent AR vectors.
+    task automatic monitor_mst_r(input int unsigned i);
+      master_exp_t exp_mst_r;
+      mst_axi_id_t mst_axi_r_id;
+      logic        mst_axi_r_last;
+      if (masters_axi[i].r_valid && masters_axi[i].r_ready) begin
+        incr_conducted_tests(1);
+        mst_axi_r_id   = masters_axi[i].r_id;
+        mst_axi_r_last = masters_axi[i].r_last;
+        if (mst_axi_r_last) begin
+          $display("%0tns > Master %0d: Got last R with id: %b",
+                   $time, i, mst_axi_r_id);
+        end
+        if (this.exp_r_queue[i].empty()) begin
+          incr_failed_tests(1);
+          $warning("Master %d: unexpected R beat with ID: %b detected!", i, mst_axi_r_id);
+        end else begin
+          exp_mst_r = this.exp_r_queue[i].pop_id(mst_axi_r_id);
+          if (mst_axi_r_id != exp_mst_r.mst_axi_id) begin
+            incr_failed_tests(1);
+            $warning("Master: %d got unexpected R with ID: %b", i, mst_axi_r_id);
+          end
+          if (mst_axi_r_last != exp_mst_r.last) begin
+            incr_failed_tests(1);
+            $warning("Master: %d got unexpected R with ID: %b and last flag: %b",
+                i, mst_axi_r_id, mst_axi_r_last);
+          end
+        end
+      end
+    endtask : monitor_mst_r
+
+    // Some tasks to manage bookkeeping of the tests conducted.
+    task incr_expected_tests(input int unsigned times);
+      cnt_sem.get();
+      this.tests_expected += times;
+      cnt_sem.put();
+    endtask : incr_expected_tests
+
+    task incr_conducted_tests(input int unsigned times);
+      cnt_sem.get();
+      this.tests_conducted += times;
+      cnt_sem.put();
+    endtask : incr_conducted_tests
+
+    task incr_failed_tests(input int unsigned times);
+      cnt_sem.get();
+      this.tests_failed += times;
+      cnt_sem.put();
+    endtask : incr_failed_tests
+
+    // This task invokes the various monitoring tasks. It first forks in two, spitting
+    // the tasks that should continuously run and the ones that get invoked every clock cycle.
+    // For the tasks every clock cycle all processes that only push something in the fifo's and
+    // Queues get run. When they are finished the processes that pop something get run.
+    task run();
+      Continous: fork
+        begin
+          do begin
+            cycle_start();
+            // at every cycle span some monitoring processes
+            // execute all processes that put something into the queues
+            PushMon: fork
+              proc_mst_aw: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_mst_aw(i);
+                end
+              end
+              proc_mst_ar: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_mst_ar(i);
+                end
+              end
+            join : PushMon
+            // this one pops and pushes something
+            proc_slv_aw: begin
+              for (int unsigned i = 0; i < NoSlaves; i++) begin
+                monitor_slv_aw(i);
+              end
+            end
+            proc_slv_w: begin
+              for (int unsigned i = 0; i < NoSlaves; i++) begin
+                monitor_slv_w(i);
+              end
+            end
+            // These only pop somethong from the queses
+            PopMon: fork
+              proc_mst_b: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_mst_b(i);
+                end
+              end
+              proc_slv_ar: begin
+                for (int unsigned i = 0; i < NoSlaves; i++) begin
+                  monitor_slv_ar(i);
+                end
+              end
+              proc_mst_r: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_mst_r(i);
+                end
+              end
+            join : PopMon
+            // check the slave W fifos last
+            proc_check_slv_w: begin
+              for (int unsigned i = 0; i < NoSlaves; i++) begin
+                check_slv_w(i);
+              end
+            end
+            cycle_end();
+          end while (1'b1);
+        end
+      join
+    endtask : run
+
+    task print_result();
+      $info("Simulation has ended!");
+      $display("Tests Expected:  %d", this.tests_expected);
+      $display("Tests Conducted: %d", this.tests_conducted);
+      $display("Tests Failed:    %d", this.tests_failed);
+      if(tests_failed > 0) begin
+        $error("Simulation encountered unexpected Transactions!!!!!!");
+      end
+      if(tests_conducted == 0) begin
+        $error("Simulation did not conduct any tests!");
+      end
+    endtask : print_result
+  endclass : ace_ccu_monitor
+endpackage
