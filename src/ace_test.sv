@@ -691,7 +691,7 @@ endclass
       automatic int unsigned mem_region_idx;
       automatic mem_region_t mem_region;
       automatic int cprob;
-      automatic logic [1:0] trs;
+      automatic logic [2:0] trs;
 
       // No memory regions defined
       if (mem_map.size() == 0) begin
@@ -736,7 +736,7 @@ endclass
 
         // Randomize address.  Make sure that the burst does not cross a 4KiB boundary.
         forever begin
-          size  = $clog2(len);
+          size  = $clog2(AXI_STRB_WIDTH)-1;
           // rand_success = std::randomize(size) with {
           //   2**size <= AXI_STRB_WIDTH;
           //   2**size <= len;
@@ -764,27 +764,8 @@ endclass
       end else begin
         // Randomize address.  Make sure that the burst does not cross a 4KiB boundary.
         forever begin
-          // Randomize burst length.
-          len = $urandom_range(0,this.max_len);
-          // rand_success = std::randomize(len) with {
-          //   len <= this.max_len;
-          //   (ax_beat.ax_burst == BURST_WRAP) ->
-          //       len inside {len_t'(1), len_t'(3), len_t'(7), len_t'(15)};
-          // }; assert(rand_success);
-          size = $clog2(AXI_STRB_WIDTH)-1;
-          // rand_success = std::randomize(size) with {
-          //   2**size <= AXI_STRB_WIDTH;
-          // }; assert(rand_success);
-          ax_ace_beat.ax_size = size;
-          ax_ace_beat.ax_len = len;
-
           // Randomize address
-          addr  = mem_region.addr_begin;
-          // rand_success = std::randomize(addr) with {
-          //   addr >= mem_region.addr_begin;
-          //   addr <= mem_region.addr_end;
-          //   addr + ((len + 1) << size) <= mem_region.addr_end;
-          // }; assert(rand_success);
+          addr  = $urandom_range(mem_region.addr_begin, mem_region.addr_end);
 
           if (ax_ace_beat.ax_burst == axi_pkg::BURST_FIXED) begin
             if (((addr + 2**ax_ace_beat.ax_size) & PFN_MASK) == (addr & PFN_MASK)) begin
@@ -798,45 +779,76 @@ endclass
         end
       end
 
-      ax_ace_beat.ax_addr = addr;
+      
       id       = $urandom();
       qos      = $urandom();
       awunique = 0;
       trs      = $urandom_range(0,7);
-      
+      size    = $clog2(AXI_STRB_WIDTH)-1;
       case(trs )
         ace_pkg::READ_NO_SNOOP: begin
           snoop   = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
+          len     = 1;
         end
-        ace_pkg::CLEAN_INVALID: begin
-          snoop   = 'b1001;
+        ace_pkg::READ_ONCE: begin
+          snoop   = 'b0000;
+          domain  = 'b01;
+          bar     = 'b00;
+          len     = 1;
+        end
+        ace_pkg::READ_SHARED: begin
+          snoop   = 'b0001;
+          domain  = 'b01;
+          bar     = 'b00;
+          len     = 1;
+        end
+        ace_pkg::READ_UNIQUE: begin
+          snoop   = 'b0111;
+          domain  = 'b01;
+          bar     = 'b00;
+          len     = 1;
+        end
+
+        ace_pkg::CLEAN_UNIQUE: begin
+          snoop   = 'b1011;
           domain  = 'b00;
           bar     = 'b00;
+          len     = 0;
         end
+
         ace_pkg::WRITE_NO_SNOOP: begin
           snoop   = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
+          len     = 1;
         end
         ace_pkg::WRITE_BACK: begin
           snoop   = 'b0011;
           domain  = 'b00;
           bar     = 'b00;
+          len     = 1;
         end
-        default: begin
+        ace_pkg::WRITE_UNIQUE: begin
           snoop   = 'b0000;
+          domain  = 'b10;
+          bar     = 'b00;
+          len     = 1;
+        end
+
+
+        default: begin
+          snoop   = 'b1011;
           domain  = 'b00;
           bar     = 'b00;
+          len     = 0;
         end
       endcase
          
-
-      // rand_success = std::randomize(id); assert(rand_success);
-      // rand_success = std::randomize(qos); assert(rand_success);
-      // The random ID *must* be legalized with `legalize_id()` before the beat is sent!  This is
-      // currently done in the functions `create_aws()` and `send_ars()`.
+      ax_ace_beat.ax_addr     = addr;
+      ax_ace_beat.ax_size     = size;
+      ax_ace_beat.ax_len      = len;
       ax_ace_beat.ax_id       = id;
       ax_ace_beat.ax_qos      = qos;
       ax_ace_beat.ax_snoop    = snoop;
@@ -925,27 +937,16 @@ endclass
         automatic int unsigned n_bytes;
         automatic size_t size;
         automatic addr_t addr_mask;
-        // In an exclusive burst, the number of bytes to be transferred must be a power of 2, i.e.,
-        // 1, 2, 4, 8, 16, 32, 64, or 128 bytes, and the burst length must not exceed 16 transfers.
-        static int unsigned ul = (AXI_STRB_WIDTH < 8) ? 4 + $clog2(AXI_STRB_WIDTH) : 7;
-        n_bytes = $urandom_range(1,ul);
-        // rand_success = std::randomize(n_bytes) with {
-        //   n_bytes >= 1;
-        //   n_bytes <= ul;
-        // }; assert(rand_success);
-        n_bytes = 2**n_bytes;
-        size  = 1;
-        // rand_success = std::randomize(size) with {
-        //   size >= 0;
-        //   2**size <= n_bytes;
-        //   2**size <= AXI_STRB_WIDTH;
-        //   n_bytes / 2**size <= 16;
-        // }; assert(rand_success);
-        ar_ace_beat.ax_size = size;
-        ar_ace_beat.ax_len = n_bytes / 2**size;
+        ar_ace_beat.ax_size = $clog2(AXI_STRB_WIDTH)-1;
+        
         // The address must be aligned to the total number of bytes in the burst.
-        ar_ace_beat.ax_addr = ar_ace_beat.ax_addr & ~(n_bytes-1);
+        ar_ace_beat.ax_addr = ar_ace_beat.ax_addr & ~(2);
         ar_ace_beat.ax_snoop = $urandom();
+        if( ar_ace_beat.ax_snoop == 4'b1001 || ar_ace_beat.ax_snoop == 4'b1011) begin
+          ar_ace_beat.ax_len = 0;
+        end else begin
+          ar_ace_beat.ax_len = 1;
+        end
         ar_ace_beat.ax_bar = $urandom();
         ar_ace_beat.ax_domain = $urandom();
 

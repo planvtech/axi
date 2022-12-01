@@ -215,9 +215,16 @@ ccu_fsm
     .m2s_resp_i      ( slv_snp_resp_i     )
 );
 
+// connection SNOOP broadcast
+for (genvar i = 1; i < Cfg.NoSlvPorts; i++) begin : SNOOP_BROADCAST
+    `SNOOP_ASSIGN_REQ_STRUCT(slv_snp_req_o[i], slv_snp_req_o[0])
+end 
+
 // connect CCU reqs and resps to mux  
 `ACE_ASSIGN_REQ_STRUCT(mst_reqs[Cfg.NoSlvPorts], ccu_reqs_o)
 `ACE_ASSIGN_RESP_STRUCT(ccu_resps_i, mst_resps[Cfg.NoSlvPorts])
+
+ 
       
 endmodule
 
@@ -298,8 +305,7 @@ import cf_math_pkg::idx_width;
     /// Assigning SNOOP request from CCU logic to master 
     `SNOOP_ASSIGN_FROM_REQ(snoop_ports[i], snoop_reqs[i])
     /// Assigning SNOOP response from master to CCU logic
-    //`SNOOP_ASSIGN_TO_RESP(snoop_resps[i], snoop_ports[i])
-    assign snoop_resps[i] ='b0;
+    `SNOOP_ASSIGN_TO_RESP(snoop_resps[i], snoop_ports[i])
   end
 
 

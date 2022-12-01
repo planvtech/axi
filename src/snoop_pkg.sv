@@ -36,6 +36,7 @@ package snoop_pkg;
   localparam READ_UNIQUE = 4'b0111;
   localparam CLEAN_SHARED = 4'b1000;
   localparam CLEAN_INVALID = 4'b1001;
+  localparam CLEAN_UNIQUE = 4'b1011;
   localparam MAKE_INVALID = 4'b1101;
   localparam DVM_COMPLETE = 4'b1110;
   localparam DVM_MESSAGE = 4'b1111;

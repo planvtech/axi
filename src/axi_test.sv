@@ -1588,12 +1588,15 @@ package axi_test;
       automatic addr_t          ar_addr;
       automatic data_t           r_data;
       automatic axi_pkg::resp_t  r_resp;
+      int i =0;
       repeat (n_reads) begin
         wait (ar_queue.size() > 0);
         ar_addr = this.ar_queue.pop_front();
         rand_wait(RESP_MIN_WAIT_CYCLES, RESP_MAX_WAIT_CYCLES);
         drv.recv_r(r_data, r_resp);
         $display("%0t %s> Recv  R with DATA: %h RESP: %0h", $time(), this.name, r_data, r_resp);
+        $display("READS COMPLETED %d", i);
+        i=i+1;
       end
     endtask : recv_rs
 

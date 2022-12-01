@@ -28,42 +28,43 @@ module ccu_fsm
                         SEND_INVALID_R, //2 
                         SEND_READ,      //3
                         WAIT_RESP_R,    //4   
-                        SEND_DATA,      //5
-                        SEND_AXI_REQ_R, //6
-                        READ_MEM,       //7
-                        WAIT_INVALID_R, //8
-                        SEND_ACK_I_R,   //9                       
-                        DECODE_W,       //10
-                        SEND_INVALID_W, //11
-                        WAIT_RESP_W,    //12 
-                        SEND_AXI_REQ_W, //13
-                        WRITE_MEM,      //14
-                        SEND_ACK_W      //15
+                        READ_SNP_DATA,  //5
+                        SEND_DATA,      //6
+                        SEND_CD_READY,
+                        SEND_AXI_REQ_R, //7
+                        READ_MEM,       //8
+                        WAIT_INVALID_R, //9
+                        SEND_ACK_I_R,   //10                       
+                        DECODE_W,       //11
+                        SEND_INVALID_W, //12
+                        WAIT_RESP_W,    //13 
+                        SEND_AXI_REQ_W, //14
+                        WRITE_MEM       //15
+
                     } state_d, state_q;
     
     // snoop resoponse valid
-    logic [NoMstPorts-1:0]          mst_resp_cr_valid;
+    logic [NoMstPorts-1:0]          cr_valid;
+    // snoop channel ac ready
+    logic [NoMstPorts-1:0]          ac_ready;
+    // snoop channel cd last 
+    logic [NoMstPorts-1:0]          cd_last;
     // check for availablilty of data
     logic [NoMstPorts-1:0]          data_available;
-    // snoop channel ac received by master
-    logic [NoMstPorts-1:0]          mst_resp_ac_ready;
-    // snoop channel cd last 
-    logic [NoMstPorts-1:0]          mst_resp_cd_last;
+    // check for response error
+    logic [NoMstPorts-1:0]          response_error;
+    // check for data received
+    logic [NoMstPorts-1:0]          data_received;
+    // check for shared in cr_resp
+    logic [NoMstPorts-1:0]          shared;
+    // check for dirty in cr_resp
+    logic [NoMstPorts-1:0]          dirty;
     // request holder
     mst_req_t                       ccu_req_holder; 
     // response holder
     mst_resp_t                      ccu_resp_holder;
     // snoop response holder
     snoop_resp_t [NoMstPorts-1:0]   m2s_resp_holder;
-
-
-    // stack snoop reponse valids and data_available
-    for (genvar i = 0; i < NoMstPorts; i++) begin : stack_cr_valid
-        assign mst_resp_cr_valid[i] = 'b1;//m2s_resp_holder[i].cr_valid;
-        assign data_available[i]    = 'b0;//m2s_resp_holder[i].cr_resp[0];
-        assign mst_resp_ac_ready[i] = 'b0;//m2s_resp_i[i].ac_ready;
-        assign mst_resp_cd_last[i]  = 'b1;//m2s_resp_i[i].cd.last;
-    end 
 
 
     // ----------------------
@@ -101,17 +102,17 @@ module ccu_fsm
         //---- Read Branch ----
         //---------------------         
         DECODE_R: begin       
-            // check read transaction type
-           // if(ccu_req_holder.ar.snoop != 4'b1011) begin   // check if CleanUnique then send Invalidate 
-                state_d = SEND_READ;
-          //  end else begin
-        //        state_d = SEND_INVALID_R;
-        //    end
+            //check read transaction type
+            if(ccu_req_holder.ar.snoop != snoop_pkg::CLEAN_UNIQUE) begin   // check if CleanUnique then send Invalidate 
+              state_d = SEND_READ;
+            end else begin
+                state_d = SEND_INVALID_R;
+            end
         end
 
         SEND_INVALID_R: begin
             // wait for all snoop masters to assert AC ready 
-            if (mst_resp_ac_ready != '0) begin
+            if (ac_ready != '1) begin
                 state_d = SEND_INVALID_R;
             end else begin
                 state_d = WAIT_INVALID_R;
@@ -120,7 +121,7 @@ module ccu_fsm
 
         WAIT_INVALID_R: begin
             // wait for all snoop masters to assert CR valid 
-            if (mst_resp_cr_valid != '1) begin
+            if (cr_valid != '1) begin
                 state_d = WAIT_INVALID_R;
             end else begin
                 state_d = SEND_ACK_I_R;
@@ -129,7 +130,7 @@ module ccu_fsm
 
         SEND_READ: begin
             // wait for all snoop masters to de-assert AC ready 
-            if (mst_resp_ac_ready != '0) begin
+            if (ac_ready != '1) begin
                 state_d = SEND_READ;
             end else begin
                 state_d = WAIT_RESP_R;
@@ -138,25 +139,37 @@ module ccu_fsm
 
         WAIT_RESP_R: begin
             // wait for all snoop masters to assert CR valid 
-            if (mst_resp_cr_valid != '1) begin
+            if (cr_valid != '1) begin
                 state_d = WAIT_RESP_R;
-            end else if(data_available != 0) begin
-                state_d = SEND_DATA;
+            end else if(data_available != '0 && response_error == '0 ) begin
+                state_d = READ_SNP_DATA;
             end else begin
                 state_d = SEND_AXI_REQ_R;
             end
         end
 
-        SEND_DATA: begin
-            // wait for initiating master to de-assert r_ready
-            if(ccu_req_i.r_ready != 'b0) begin
-                if(mst_resp_cd_last != '0) begin 
-                    state_d = IDLE;
-                end else begin 
-                    state_d = SEND_DATA;
-                end
+        READ_SNP_DATA: begin
+            if(data_available != data_received) begin
+                state_d = READ_SNP_DATA;
             end else begin
                 state_d = SEND_DATA;
+            end
+        end
+
+        SEND_DATA: begin
+            // wait for initiating master to assert r_ready
+            if(ccu_req_i.r_ready != 'b0) begin
+               state_d = SEND_CD_READY;
+            end else begin
+                state_d = SEND_DATA;
+            end
+        end
+
+       SEND_CD_READY:begin
+            if(cd_last == data_available) begin 
+                    state_d = IDLE;
+            end else begin 
+                    state_d = READ_SNP_DATA;
             end
         end
 
@@ -200,7 +213,7 @@ module ccu_fsm
 
         SEND_INVALID_W: begin
             // wait for all snoop masters to assert AC ready 
-            if (mst_resp_ac_ready != '0) begin
+            if (ac_ready != '1) begin
                 state_d = SEND_INVALID_W;
             end else begin
                 state_d = WAIT_RESP_W;
@@ -209,7 +222,7 @@ module ccu_fsm
 
         WAIT_RESP_W: begin
             // wait for all snoop masters to assert CR valid 
-            if (mst_resp_cr_valid != '1 ) begin
+            if (cr_valid != '1 ) begin
                 state_d = WAIT_RESP_W;
             end else begin
                 state_d = SEND_AXI_REQ_W;
@@ -228,10 +241,10 @@ module ccu_fsm
         WRITE_MEM: begin
             // wait for responding slave to send b_valid
             if((ccu_resp_i.b_valid && ccu_req_i.b_ready)) begin
-                  if(ccu_req_holder.aw.atop == axi_pkg::ATOP_ATOMICSWAP || ccu_req_holder.aw.atop == axi_pkg::ATOP_ATOMICCMP|| ccu_req_holder.aw.atop[5:4] == axi_pkg::ATOP_ATOMICLOAD) begin
+                  if(ccu_req_holder.aw.atop [5]) begin
                     state_d = READ_MEM;
                   end else begin
-                      state_d = IDLE;
+                    state_d = IDLE;
                   end
             end else begin
                 state_d = WRITE_MEM;
@@ -280,20 +293,27 @@ module ccu_fsm
             s2m_req_o.ac_valid  =   'b1;         
         end 
         
-        WAIT_RESP_R, WAIT_RESP_W: begin
+        WAIT_RESP_R, WAIT_RESP_W, WAIT_INVALID_R: begin
             s2m_req_o.cr_ready  =   'b1;
+        end
+
+        READ_SNP_DATA: begin
         end
 
         SEND_DATA: begin
             // response to intiating master
             for (int unsigned i = 0; i < NoMstPorts; i = i + 1)
                 if (data_available[i]) begin
-                    ccu_resp_o.r.data   =   m2s_resp_i[i].cd.data;
-                    ccu_resp_o.r.last   =   m2s_resp_i[i].cd.last;
+                    ccu_resp_o.r.data   =   m2s_resp_holder[i].cd.data;
+                    ccu_resp_o.r.last   =   m2s_resp_holder[i].cd.last;
+                    ccu_resp_o.r_valid  =   m2s_resp_holder[i].cd_valid;
                 end
-            ccu_resp_o.r_valid  =   'b1;
-            ccu_resp_o.r.id     =   ccu_req_holder.ar.id;   
-            s2m_req_o.cd_ready  =   'b1; 
+            ccu_resp_o.r.id         =   ccu_req_holder.ar.id;
+            ccu_resp_o.r.resp[3]    =   |shared;                // update if shared
+            ccu_resp_o.r.resp[2]    =   |dirty;                 // update if any line dirty
+        end
+        SEND_CD_READY: begin
+            s2m_req_o.cd_ready  =   'b1;
         end
 
         SEND_AXI_REQ_R: begin
@@ -367,16 +387,63 @@ module ccu_fsm
     end
 
 
-    
-    // Hold snoop response
-    for (genvar i = 0; i < NoMstPorts; i = i + 1) begin: hold_snoop
+    // Hold snoop AC_ready
+    for (genvar i = 0; i < NoMstPorts; i = i + 1) begin: hold_ac_ready
         always_ff @ (posedge clk_i, negedge rst_ni) begin
-            if(rst_ni) begin
-                m2s_resp_holder[i] <= '0;
-            end else if(state_q == WAIT_RESP_R && (m2s_resp_i[i].cr_valid)) begin
-                m2s_resp_holder[i] <= m2s_resp_i[i];
+            if(!rst_ni) begin
+                ac_ready[i]         <= 'b0;
+            end else if(((state_q == SEND_READ || state_q == SEND_INVALID_R || state_q == SEND_INVALID_W) && (m2s_resp_i[i].ac_ready) ) ) begin
+                ac_ready[i]         <= m2s_resp_i[i].ac_ready;  
+            end else if(state_q == IDLE) begin
+                ac_ready[i]         <= 'b0; 
             end
         end 
-    end      
+    end
+    
 
+    // Hold snoop CR 
+    for (genvar i = 0; i < NoMstPorts; i = i + 1) begin: hold_snoop_response
+        always_ff @ (posedge clk_i, negedge rst_ni) begin
+            if(!rst_ni) begin
+                cr_valid[i]         <= 'b0;
+                data_available[i]   <= 'b0;
+                shared[i]           <= 'b0;
+                dirty[i]            <= 'b0;
+                response_error[i]   <= 'b0;
+            end else if(((state_q == WAIT_RESP_R || state_q == WAIT_RESP_W || state_q == WAIT_INVALID_R) && (m2s_resp_i[i].cr_valid) ) ) begin
+                cr_valid[i]         <=   m2s_resp_i[i].cr_valid;
+                data_available[i]   <=   m2s_resp_i[i].cr_resp.dataTransfer;
+                shared[i]           <=   m2s_resp_i[i].cr_resp.isShared;
+                dirty[i]            <=   m2s_resp_i[i].cr_resp.passDirty;
+                response_error[i]   <=   m2s_resp_i[i].cr_resp.error;        
+            end else if(state_q == IDLE) begin
+                cr_valid[i]         <= 'b0;
+                data_available[i]   <= 'b0;
+                shared[i]           <= 'b0;
+                dirty[i]            <= 'b0;
+                response_error[i]   <= 'b0;
+            end
+        end 
+    end
+
+    // Hold snoop CD
+    for (genvar i = 0; i < NoMstPorts; i = i + 1) begin: hold_snoop_data
+        always_ff @ (posedge clk_i, negedge rst_ni) begin
+            if(!rst_ni) begin
+                data_received[i]    <= 'b0;
+                cd_last[i]          <= 'b0;
+                m2s_resp_holder[i]  <= '0;
+            end else if(state_q == READ_SNP_DATA && m2s_resp_i[i].cd_valid) begin
+                data_received[i]    <= m2s_resp_i[i].cd_valid;
+                cd_last[i]          <= m2s_resp_i[i].cd.last;
+                m2s_resp_holder[i]  <= m2s_resp_i[i];
+            end else if(state_q == SEND_CD_READY) begin
+                data_received[i]    <= 'b0;
+                cd_last[i]          <= 'b0;
+                m2s_resp_holder[i]  <= '0;
+            end
+        end 
+    end
 endmodule 
+
+

@@ -120,6 +120,22 @@ module tb_ace_ccu_top #(
     .TT ( TestTime         )
   ) axi_rand_slave_t;
 
+  typedef snoop_test::snoop_rand_slave #(
+    // ADDR and Data interface parameters
+    .AW ( AxiAddrWidth    ),
+    .DW ( AxiDataWidth    ),
+    // Stimuli application and test time
+    .TA ( ApplTime),
+    .TT ( TestTime),
+    .RAND_RESP ( '0),
+    // Upper and lower bounds on wait cycles on Ax, W, and resp (R and B) channels
+    .AC_MIN_WAIT_CYCLES ( 5),
+    .AC_MAX_WAIT_CYCLES ( 5),
+    .CR_MIN_WAIT_CYCLES ( 5),
+    .CR_MAX_WAIT_CYCLES ( 5),
+    .CD_MIN_WAIT_CYCLES ( 5),
+    .CD_MAX_WAIT_CYCLES ( 5)
+  )snoop_rand_slave_t;
   // -------------
   // DUT signals
   // -------------
@@ -211,7 +227,7 @@ module tb_ace_ccu_top #(
   end
 
   // -------------------------------
-  // AXI Rand Masters and Slaves
+  // AXI and SNOOP Rand Masters and Slaves
   // -------------------------------
   // Masters control simulation run time
   ace_rand_master_t ace_rand_master [TbNumMst];
@@ -228,6 +244,17 @@ module tb_ace_ccu_top #(
     end
   end
 
+  snoop_rand_slave_t snoop_rand_slave [TbNumMst];
+  for (genvar i = 0; i < TbNumMst; i++) begin : gen_rand_snoop
+    initial begin
+      snoop_rand_slave[i] = new( snoop_dv[i] );
+      snoop_rand_slave[i].reset();
+      @(posedge rst_n);
+      snoop_rand_slave[i].run();
+    end
+  end
+
+
   axi_rand_slave_t axi_rand_slave [1];
   for (genvar i = 0; i < TbNumSlv; i++) begin : gen_rand_slave
     initial begin
@@ -237,6 +264,9 @@ module tb_ace_ccu_top #(
       axi_rand_slave[i].run();
     end
   end
+
+  
+
 
   initial begin : proc_monitor
     static tb_ace_ccu_pkg::ace_ccu_monitor #(
