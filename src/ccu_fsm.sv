@@ -19,7 +19,7 @@ module ccu_fsm
     output mst_req_t                    ccu_req_o,
     input  mst_resp_t                   ccu_resp_i,
     // Snoop channel resuest and response
-    output snoop_req_t                   s2m_req_o,
+    output snoop_req_t  [NoMstPorts-1:0] s2m_req_o,
     input  snoop_resp_t [NoMstPorts-1:0] m2s_resp_i
 );
 
@@ -45,6 +45,8 @@ module ccu_fsm
     
     // snoop resoponse valid
     logic [NoMstPorts-1:0]          cr_valid;
+    // snoop channel ac valid
+    logic [NoMstPorts-1:0]          ac_valid;
     // snoop channel ac ready
     logic [NoMstPorts-1:0]          ac_ready;
     // snoop channel cd last 
@@ -280,21 +282,32 @@ module ccu_fsm
         end
         SEND_READ: begin
             // send request to snooping masters
-            s2m_req_o.ac.addr   =   ccu_req_holder.ar.addr;
-            s2m_req_o.ac.prot   =   ccu_req_holder.ar.prot;
-            s2m_req_o.ac.snoop  =   ccu_req_holder.ar.snoop;
-            s2m_req_o.ac_valid  =   'b1;
+            for (int unsigned n = 0; n < NoMstPorts; n = n + 1) begin
+                s2m_req_o[n].ac.addr   =   ccu_req_holder.ar.addr;
+                s2m_req_o[n].ac.prot   =   ccu_req_holder.ar.prot;
+                s2m_req_o[n].ac.snoop  =   ccu_req_holder.ar.snoop;
+                if(ac_ready[n] && ac_valid[n])
+                    s2m_req_o[n].ac_valid  =   'b0;
+                else
+                    s2m_req_o[n].ac_valid  =   'b1;
+            end
         end
 
         SEND_INVALID_R:begin
-            s2m_req_o.ac.addr   =   ccu_req_holder.ar.addr;
-            s2m_req_o.ac.prot   =   ccu_req_holder.ar.prot;
-            s2m_req_o.ac.snoop  =   'b1001;
-            s2m_req_o.ac_valid  =   'b1;         
+            for (int unsigned n = 0; n < NoMstPorts; n = n + 1) begin
+                s2m_req_o[n].ac.addr   =   ccu_req_holder.ar.addr;
+                s2m_req_o[n].ac.prot   =   ccu_req_holder.ar.prot;
+                s2m_req_o[n].ac.snoop  =   'b1001;
+                if(ac_ready[n] && ac_valid[n])
+                    s2m_req_o[n].ac_valid  =   'b0;
+                else
+                    s2m_req_o[n].ac_valid  =   'b1;
+            end       
         end 
         
         WAIT_RESP_R, WAIT_RESP_W, WAIT_INVALID_R: begin
-            s2m_req_o.cr_ready  =   'b1;
+            for (int unsigned n = 0; n < NoMstPorts; n = n + 1) 
+                s2m_req_o[n].cr_ready  =   'b1;
         end
 
         READ_SNP_DATA: begin
@@ -302,18 +315,19 @@ module ccu_fsm
 
         SEND_DATA: begin
             // response to intiating master
-            for (int unsigned i = 0; i < NoMstPorts; i = i + 1)
-                if (data_available[i]) begin
-                    ccu_resp_o.r.data   =   m2s_resp_holder[i].cd.data;
-                    ccu_resp_o.r.last   =   m2s_resp_holder[i].cd.last;
-                    ccu_resp_o.r_valid  =   m2s_resp_holder[i].cd_valid;
+            for (int unsigned n = 0; n < NoMstPorts; n = n + 1)
+                if (data_available[n]) begin
+                    ccu_resp_o.r.data   =   m2s_resp_holder[n].cd.data;
+                    ccu_resp_o.r.last   =   m2s_resp_holder[n].cd.last;
+                    ccu_resp_o.r_valid  =   m2s_resp_holder[n].cd_valid;
                 end
             ccu_resp_o.r.id         =   ccu_req_holder.ar.id;
             ccu_resp_o.r.resp[3]    =   |shared;                // update if shared
             ccu_resp_o.r.resp[2]    =   |dirty;                 // update if any line dirty
         end
         SEND_CD_READY: begin
-            s2m_req_o.cd_ready  =   'b1;
+            for (int unsigned n = 0; n < NoMstPorts; n = n + 1) 
+                s2m_req_o[n].cd_ready  =   'b1;
         end
 
         SEND_AXI_REQ_R: begin
@@ -346,10 +360,15 @@ module ccu_fsm
         end
 
         SEND_INVALID_W:begin
-            s2m_req_o.ac.addr   =   ccu_req_holder.aw.addr;
-            s2m_req_o.ac.prot   =   ccu_req_holder.aw.prot;
-            s2m_req_o.ac.snoop  =   'b1001;
-            s2m_req_o.ac_valid  =   'b1;         
+            for (int unsigned n = 0; n < NoMstPorts; n = n + 1) begin
+                s2m_req_o[n].ac.addr   =   ccu_req_holder.ar.addr;
+                s2m_req_o[n].ac.prot   =   ccu_req_holder.ar.prot;
+                s2m_req_o[n].ac.snoop  =   'b1001;
+                if(ac_ready[n] && ac_valid[n])
+                    s2m_req_o[n].ac_valid  =   'b0;
+                else
+                    s2m_req_o[n].ac_valid  =   'b1;
+            end         
         end 
 
         SEND_AXI_REQ_W: begin
@@ -388,15 +407,18 @@ module ccu_fsm
 
 
     // Hold snoop AC_ready
-    for (genvar i = 0; i < NoMstPorts; i = i + 1) begin: hold_ac_ready
+    for (genvar n = 0; n < NoMstPorts; n = n + 1) begin: hold_ac_ready
         always_ff @ (posedge clk_i, negedge rst_ni) begin
             if(!rst_ni) begin
-                ac_ready[i]         <= 'b0;
-            end else if(((state_q == SEND_READ || state_q == SEND_INVALID_R || state_q == SEND_INVALID_W) && (m2s_resp_i[i].ac_ready) ) ) begin
-                ac_ready[i]         <= m2s_resp_i[i].ac_ready;  
+                ac_ready[n]         <= 'b0;
+                ac_valid[n]         <= 'b0;
+            end else if(((state_q == SEND_READ || state_q == SEND_INVALID_R || state_q == SEND_INVALID_W) && (m2s_resp_i[n].ac_ready) ) ) begin
+                ac_ready[n]         <= m2s_resp_i[n].ac_ready; 
+                ac_valid[n]         <= s2m_req_o[n].ac_valid; 
             end else if(state_q == IDLE) begin
-                ac_ready[i]         <= 'b0; 
-            end
+                ac_ready[n]         <= 'b0; 
+                ac_valid[n]         <= 'b0;
+            end 
         end 
     end
     

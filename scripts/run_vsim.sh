@@ -197,7 +197,7 @@ exec_test() {
             done
             ;;
         ace_ccu_top)
-            for NumMst in 4 ; do
+            for NumMst in 2 3 4 5 6 ; do
                 for NumSlv in  1; do
                     for Atop in 0 1  ; do
                         for Exclusive in 0 1; do

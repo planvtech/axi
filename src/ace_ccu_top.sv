@@ -211,21 +211,16 @@ ccu_fsm
     .ccu_resp_o      ( ccu_resps_mux_i    ),
     .ccu_req_o       ( ccu_reqs_o         ),
     .ccu_resp_i      ( ccu_resps_i        ),
-    .s2m_req_o       ( slv_snp_req_o[0]   ),
+    .s2m_req_o       ( slv_snp_req_o      ),
     .m2s_resp_i      ( slv_snp_resp_i     )
 );
 
-// connection SNOOP broadcast
-for (genvar i = 1; i < Cfg.NoSlvPorts; i++) begin : SNOOP_BROADCAST
-    `SNOOP_ASSIGN_REQ_STRUCT(slv_snp_req_o[i], slv_snp_req_o[0])
-end 
+
 
 // connect CCU reqs and resps to mux  
 `ACE_ASSIGN_REQ_STRUCT(mst_reqs[Cfg.NoSlvPorts], ccu_reqs_o)
 `ACE_ASSIGN_RESP_STRUCT(ccu_resps_i, mst_resps[Cfg.NoSlvPorts])
 
- 
-      
 endmodule
 
 

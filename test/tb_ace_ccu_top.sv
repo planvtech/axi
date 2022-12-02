@@ -129,12 +129,12 @@ module tb_ace_ccu_top #(
     .TT ( TestTime),
     .RAND_RESP ( '0),
     // Upper and lower bounds on wait cycles on Ax, W, and resp (R and B) channels
-    .AC_MIN_WAIT_CYCLES ( 5),
-    .AC_MAX_WAIT_CYCLES ( 5),
-    .CR_MIN_WAIT_CYCLES ( 5),
-    .CR_MAX_WAIT_CYCLES ( 5),
-    .CD_MIN_WAIT_CYCLES ( 5),
-    .CD_MAX_WAIT_CYCLES ( 5)
+    .AC_MIN_WAIT_CYCLES ( 2),
+    .AC_MAX_WAIT_CYCLES ( 15),
+    .CR_MIN_WAIT_CYCLES ( 2),
+    .CR_MAX_WAIT_CYCLES ( 15),
+    .CD_MIN_WAIT_CYCLES ( 2),
+    .CD_MAX_WAIT_CYCLES ( 15)
   )snoop_rand_slave_t;
   // -------------
   // DUT signals

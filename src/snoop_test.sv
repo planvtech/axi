@@ -478,7 +478,6 @@ package snoop_test;
         rand_wait(CD_MIN_WAIT_CYCLES, CD_MAX_WAIT_CYCLES);
         drv.send_cd(ace_cd_beat);
         cd_wait_cnt--;
-        $display("READ CCU");
       end
     endtask
 
