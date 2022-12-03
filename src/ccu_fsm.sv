@@ -286,10 +286,7 @@ module ccu_fsm
                 s2m_req_o[n].ac.addr   =   ccu_req_holder.ar.addr;
                 s2m_req_o[n].ac.prot   =   ccu_req_holder.ar.prot;
                 s2m_req_o[n].ac.snoop  =   ccu_req_holder.ar.snoop;
-                if(ac_ready[n] && ac_valid[n])
-                    s2m_req_o[n].ac_valid  =   'b0;
-                else
-                    s2m_req_o[n].ac_valid  =   'b1;
+                s2m_req_o[n].ac_valid  =   !ac_ready[n];
             end
         end
 
@@ -298,10 +295,7 @@ module ccu_fsm
                 s2m_req_o[n].ac.addr   =   ccu_req_holder.ar.addr;
                 s2m_req_o[n].ac.prot   =   ccu_req_holder.ar.prot;
                 s2m_req_o[n].ac.snoop  =   'b1001;
-                if(ac_ready[n] && ac_valid[n])
-                    s2m_req_o[n].ac_valid  =   'b0;
-                else
-                    s2m_req_o[n].ac_valid  =   'b1;
+                s2m_req_o[n].ac_valid  =   !ac_ready[n];
             end       
         end 
         
@@ -364,10 +358,7 @@ module ccu_fsm
                 s2m_req_o[n].ac.addr   =   ccu_req_holder.ar.addr;
                 s2m_req_o[n].ac.prot   =   ccu_req_holder.ar.prot;
                 s2m_req_o[n].ac.snoop  =   'b1001;
-                if(ac_ready[n] && ac_valid[n])
-                    s2m_req_o[n].ac_valid  =   'b0;
-                else
-                    s2m_req_o[n].ac_valid  =   'b1;
+                s2m_req_o[n].ac_valid  =   !ac_ready[n];
             end         
         end 
 
