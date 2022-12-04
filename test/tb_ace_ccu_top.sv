@@ -219,7 +219,7 @@ module tb_ace_ccu_top #(
   SNOOP_BUS_DV #(
     .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
     .SNOOP_DATA_WIDTH ( AxiDataWidth      )
-  ) snoop_monior_dv [TbNumMst-1:0](clk);
+  ) snoop_monitor_dv [TbNumMst-1:0](clk);
    for (genvar i = 0; i < TbNumMst; i++) begin : gen_conn_dv_snoop
     `SNOOP_ASSIGN(snoop_dv[i], snoop[i])
     `SNOOP_ASSIGN_TO_REQ(snoop_req[i], snoop[i])
@@ -278,7 +278,7 @@ module tb_ace_ccu_top #(
       .NoMasters         ( TbNumMst            ),
       .NoSlaves          ( TbNumSlv             ),
       .TimeTest          ( TestTime             )
-    ) monitor = new( master_monitor_dv, slave_monitor_dv );
+    ) monitor = new( master_monitor_dv, slave_monitor_dv, snoop_monitor_dv );
     fork
       monitor.run();
       do begin
@@ -391,6 +391,32 @@ module tb_ace_ccu_top #(
     );
   end
 
+// logger for snoop modules
+  for (genvar i = 0; i < TbNumMst; i++) begin : gen_snoop_logger
+    snoop_chan_logger #(
+      .TestTime  ( TestTime      ), // Time after clock, where sampling happens
+      .LoggerName( $sformatf("axi_logger_snoop_%0d",i)),
+      .ac_chan_t ( snoop_ac_t ), // AW type
+      .cr_chan_t ( snoop_cr_t ), // CR type
+      .cd_chan_t ( snoop_cd_t )  // CD type
+    ) i_snoop_channel_logger (
+      .clk_i      ( clk         ),    // Clock
+      .rst_ni     ( rst_n       ),    // Asynchronous reset active low, when `1'b0` no sampling
+      .end_sim_i  ( &end_of_sim ),
+      // AC channel
+      .ac_chan_i  ( snoop_req[i].ac        ),
+      .ac_valid_i ( snoop_req[i].ac_valid  ),
+      .ac_ready_i ( snoop_resp[i].ac_ready ),
+      // CR channel
+      .cr_chan_i   ( snoop_resp[i].cr_resp ),
+      .cr_valid_i  ( snoop_resp[i].cr_valid),
+      .cr_ready_i  ( snoop_req[i].cr_ready ),
+      // CR channel
+      .cd_chan_i   ( snoop_resp[i].cd      ),
+      .cd_valid_i  ( snoop_resp[i].cd_valid),
+      .cd_ready_i  ( snoop_req[i].cd_ready )
+    );
+  end
 
   for (genvar i = 0; i < TbNumMst; i++) begin : gen_connect_master_monitor
     assign master_monitor_dv[i].aw_id       = master[i].aw_id    ;
@@ -492,5 +518,19 @@ module tb_ace_ccu_top #(
     assign slave_monitor_dv[i].r_user       = slave[i].r_user   ;
     assign slave_monitor_dv[i].r_valid      = slave[i].r_valid  ;
     assign slave_monitor_dv[i].r_ready      = slave[i].r_ready  ;
+  end
+  for (genvar i = 0; i < TbNumMst; i++) begin : gen_connect_snoop_monitor
+    assign snoop_monitor_dv[i].ac_valid     = snoop[i].ac_valid;
+    assign snoop_monitor_dv[i].ac_ready     = snoop[i].ac_ready;
+    assign snoop_monitor_dv[i].ac_snoop     = snoop[i].ac_snoop;
+    assign snoop_monitor_dv[i].ac_addr      = snoop[i].ac_addr;
+    assign snoop_monitor_dv[i].ac_prot      = snoop[i].ac_prot;
+    assign snoop_monitor_dv[i].cr_valid     = snoop[i].cr_valid;
+    assign snoop_monitor_dv[i].cr_ready     = snoop[i].cr_ready;
+    assign snoop_monitor_dv[i].cr_resp      = snoop[i].cr_resp;
+    assign snoop_monitor_dv[i].cd_valid     = snoop[i].cd_valid;
+    assign snoop_monitor_dv[i].cd_ready     = snoop[i].cd_ready;
+    assign snoop_monitor_dv[i].cd_data      = snoop[i].cd_data;
+    assign snoop_monitor_dv[i].cd_last      = snoop[i].cd_last;
   end
 endmodule

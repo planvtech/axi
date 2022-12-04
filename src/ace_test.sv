@@ -1591,8 +1591,8 @@ module ace_chan_logger #(
         aw_beat = aw_queue[0];
         w_beat  = w_queue.pop_front();
 
-        log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b, AWSNOOP: %b",
-                        $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop, aw_beat.snoop);
+        log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b",
+                        $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop);
 
         log_name = $sformatf("./axi_log/%s/write.log", LoggerName);
         fd = $fopen(log_name, "a");
@@ -1634,8 +1634,8 @@ module ace_chan_logger #(
           log_name = $sformatf("./axi_log/%s/read_%0h.log", LoggerName, i);
           fd = $fopen(log_name, "a");
           if (fd) begin
-            log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b, ARSNOOP: %b",
-                            $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop, ar_beat.snoop);
+            log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b",
+                            $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop);
 
             $fdisplay(fd, log_string);
             // write out error if last beat does not match!

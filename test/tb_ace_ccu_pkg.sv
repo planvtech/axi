@@ -79,6 +79,10 @@ package tb_ace_ccu_pkg;
       .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
       .AXI_USER_WIDTH ( AxiUserWidth      )
     ) slaves_axi [NoSlaves-1:0];
+    virtual SNOOP_BUS_DV #(
+      .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+      .SNOOP_DATA_WIDTH ( AxiDataWidth      )
+    ) slaves_snoop [NoMasters-1:0];
     //-----------------------------------------
     // Queues and FIFOs to hold the expected ids
     //-----------------------------------------
@@ -115,11 +119,16 @@ package tb_ace_ccu_pkg;
         .AXI_DATA_WIDTH ( AxiDataWidth      ),
         .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
         .AXI_USER_WIDTH ( AxiUserWidth      )
-      ) axi_slaves_vif [NoSlaves-1:0]
+      ) axi_slaves_vif [NoSlaves-1:0],
+      virtual SNOOP_BUS_DV #(
+        .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+        .SNOOP_DATA_WIDTH ( AxiDataWidth      )
+      ) snoop_slaves_vif [NoMasters-1:0]
      );
       begin
         this.masters_axi     = axi_masters_vif;
         this.slaves_axi      = axi_slaves_vif;
+        this.slaves_snoop    = snoop_slaves_vif;
         this.tests_expected  = 0;
         this.tests_conducted = 0;
         this.tests_failed    = 0;
@@ -391,6 +400,36 @@ package tb_ace_ccu_pkg;
       end
     endtask : monitor_mst_r
 
+    // This task monitors the AC channel on snoop slave. It captures incoming snoop request,
+    task automatic monitor_snoop_ac(input int unsigned i);
+      if (slaves_snoop[i].ac_valid && slaves_snoop[i].ac_ready) begin
+        $display("%0tns > SNOOP %0d: AC_SNOOP %b: ",
+              $time, i, slaves_snoop[i].ac_snoop);
+        if(slaves_snoop[i].ac_snoop == snoop_pkg::CLEAN_INVALID && i == (NoMasters-1))
+          incr_conducted_tests(1); 
+      end
+    endtask:monitor_snoop_ac
+
+    // This task monitors the CR channel on snoop slave. It captures outgoing snoop response
+    task automatic monitor_snoop_cr(input int unsigned i);
+      if (slaves_snoop[i].cr_valid && slaves_snoop[i].cr_ready) begin
+        $display("%0tns > Got Response from SNOOP %0d: CR_RESP %b: ",
+              $time, i, slaves_snoop[i].cr_resp);
+        if(slaves_snoop[i].cr_resp[0] && !slaves_snoop[i].cr_resp[1])
+          incr_expected_tests(1);
+      end
+    endtask:monitor_snoop_cr
+
+    // This task monitors the CD channel on snoop slave. It captures outgoing snoop data,
+    task automatic monitor_snoop_cd(input int unsigned i);
+      if (slaves_snoop[i].cd_valid && slaves_snoop[i].cd_ready) begin
+        $display("%0tns > Got Data from SNOOP %0d: with last flag %b: ",
+              $time, i, slaves_snoop[i].cd_last);
+          incr_conducted_tests(slaves_snoop[i].cd_last);      
+      end
+    endtask:monitor_snoop_cd
+
+
     // Some tasks to manage bookkeeping of the tests conducted.
     task incr_expected_tests(input int unsigned times);
       cnt_sem.get();
@@ -432,6 +471,11 @@ package tb_ace_ccu_pkg;
                   monitor_mst_ar(i);
                 end
               end
+              proc_snoop_ac: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_snoop_ac(i);
+                end
+              end
             join : PushMon
             // this one pops and pushes something
             proc_slv_aw: begin
@@ -461,6 +505,16 @@ package tb_ace_ccu_pkg;
                   monitor_mst_r(i);
                 end
               end
+              proc_snoop_cr: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_snoop_cr(i);
+                end
+              end
+              proc_snoop_cd: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_snoop_cd(i);
+                end
+              end
             join : PopMon
             // check the slave W fifos last
             proc_check_slv_w: begin
@@ -468,6 +522,7 @@ package tb_ace_ccu_pkg;
                 check_slv_w(i);
               end
             end
+
             cycle_end();
           end while (1'b1);
         end

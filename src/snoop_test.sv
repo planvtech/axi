@@ -524,9 +524,9 @@ module snoop_chan_logger #(
 );
 
   // queues for writes and reads
-  ac_chan_t ac_queue[$];
-  cr_chan_t  cr_queue[$];
-  cd_chan_t  cd_queue[$];
+  ac_chan_t ac_queues[$];
+  cr_chan_t  cr_queues[$];
+  cd_chan_t  cd_queues[$];
 
   // channel sampling into queues
   always @(posedge clk_i) #TestTime begin : proc_channel_sample
@@ -541,13 +541,13 @@ module snoop_chan_logger #(
         log_file = $sformatf("./ace_log/%s/snoop_read.log", LoggerName);
         fd = $fopen(log_file, "a");
         if (fd) begin
-          log_str = $sformatf("%0t> AC, SNOOP %b, PROT %b", $time, ac_beat.ac_snoop, ac_beat.ac_prot);
+          log_str = $sformatf("%0t> AC, SNOOP %b, PROT %b", $time, ac_chan_i.snoop, ac_chan_i.prot);
           $fdisplay(fd, log_str);
           $fclose(fd);
         end
-        ac_beat.ac_addr   = ac_chan_i.ac_addr;
-        ac_beat.ac_snoop    = ac_chan_i.ac_snoop;
-        ac_beat.ac_prot   = ac_chan_i.ac_prot;
+        ac_beat.addr   = ac_chan_i.addr;
+        ac_beat.snoop  = ac_chan_i.snoop;
+        ac_beat.prot   = ac_chan_i.prot;
         ac_queues.push_back(ac_beat);
       end
       // CR channel
@@ -591,20 +591,20 @@ module snoop_chan_logger #(
       @(posedge clk_i);
 
       // update the read log files
-      while (ac_queues.size() != 0 && cr_queues.size() != 0) begin
+      while (ac_queues.size() != 0 && cr_queues.size() != 0 && cd_queues.size()!=0) begin
         ac_beat = ac_queues.pop_front();
         cr_beat  = cr_queues.pop_front();
-        log_name = $sformatf("./axi_log/%s/read.log", LoggerName);
+        log_name = $sformatf("./ace_log/%s/read.log", LoggerName);
         fd = $fopen(log_name, "a");
         if (fd) begin
-          log_string = $sformatf("%0t> CR %d RESP: %b, ",
-                          $time, no_r_beat, cr_beat.cr_resp);
+          log_string = $sformatf("%0t ns> CR %d RESP: %b, ",
+                          $time, no_r_beat, cr_beat);
           $fdisplay(fd, log_string);
-          if (cr_beat.cr_resp.dataTransfer && !cr_beat.cr_resp.error) begin
+          if (cr_beat.dataTransfer && !cr_beat.error) begin
             cd_beat = cd_queues.pop_front();
-            log_string = $sformatf("%0t> CD %d DATA: %b, ",
-                            $time, no_r_beat, cd_beat.cd_data);
-            $fdisplay(fd, log_string);
+            log_string = $sformatf("%0t ns> CD %d DATA: %h, ",
+                            $time, no_r_beat, cd_beat.data);                
+            $fdisplay(fd, log_string);              
           end
           $fclose(fd);
         end
