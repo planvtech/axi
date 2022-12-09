@@ -30,16 +30,16 @@ module ccu_fsm
                         WAIT_RESP_R,    //4   
                         READ_SNP_DATA,  //5
                         SEND_DATA,      //6
-                        SEND_CD_READY,
-                        SEND_AXI_REQ_R, //7
-                        READ_MEM,       //8
-                        WAIT_INVALID_R, //9
-                        SEND_ACK_I_R,   //10                       
-                        DECODE_W,       //11
-                        SEND_INVALID_W, //12
-                        WAIT_RESP_W,    //13 
-                        SEND_AXI_REQ_W, //14
-                        WRITE_MEM       //15
+                        SEND_CD_READY,  //7
+                        SEND_AXI_REQ_R, //8
+                        READ_MEM,       //9
+                        WAIT_INVALID_R, //10
+                        SEND_ACK_I_R,   //11                       
+                        DECODE_W,       //12
+                        SEND_INVALID_W, //13
+                        WAIT_RESP_W,    //14 
+                        SEND_AXI_REQ_W, //15
+                        WRITE_MEM       //16
 
                     } state_d, state_q;
     

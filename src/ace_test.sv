@@ -778,19 +778,18 @@ endclass
           end
         end
       end
-
       
       id       = $urandom();
       qos      = $urandom();
       awunique = 0;
       trs      = $urandom_range(0,7);
-      size    = $clog2(AXI_STRB_WIDTH)-1;
+      size     = $clog2(AXI_STRB_WIDTH)-1;
       case(trs )
         ace_pkg::READ_NO_SNOOP: begin
           snoop   = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
-          len     = 1;
+          len     = $urandom();
         end
         ace_pkg::READ_ONCE: begin
           snoop   = 'b0000;
@@ -813,7 +812,7 @@ endclass
 
         ace_pkg::CLEAN_UNIQUE: begin
           snoop   = 'b1011;
-          domain  = 'b00;
+          domain  = 'b01;
           bar     = 'b00;
           len     = 0;
         end
@@ -822,7 +821,7 @@ endclass
           snoop   = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
-          len     = 1;
+          len     = $urandom();
         end
         ace_pkg::WRITE_BACK: begin
           snoop   = 'b0011;
@@ -839,10 +838,10 @@ endclass
 
 
         default: begin
-          snoop   = 'b1011;
+          snoop   = 'b0000;
           domain  = 'b00;
           bar     = 'b00;
-          len     = 0;
+          len     = $urandom();
         end
       endcase
          
