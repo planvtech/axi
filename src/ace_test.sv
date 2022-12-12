@@ -300,7 +300,7 @@ endclass
       ace.ar_valid    <= #TA 0;
       ace.ar_snoop  <= #TA '0;
       ace.ar_bar      <= #TA '0;
-      ace.ar_domain   <= #TA '0;     
+      ace.ar_domain   <= #TA '0;
     endtask
 
     /// Issue a beat on the R channel.
@@ -1291,6 +1291,8 @@ endclass
           r_ace_beat.r_resp[1] = $random();
         if (ar_ace_beat.ax_lock)
           r_ace_beat.r_resp[0]= $random();
+        r_ace_beat.r_resp[2] = $random();
+        r_ace_beat.r_resp[3] = $random();
         rand_wait(R_MIN_WAIT_CYCLES, R_MAX_WAIT_CYCLES);
         if (ar_ace_beat.ax_len == '0) begin
           r_ace_beat.r_last = 1'b1;

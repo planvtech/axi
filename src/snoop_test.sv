@@ -137,7 +137,7 @@ package snoop_test;
 
     /// Wait for a beat on the AC channel.
     task recv_ac (
-      output ace_ac_beat_t beat
+      input ace_ac_beat_t beat
     );
       snoop.ac_ready <= #TA 1;
       cycle_start();
@@ -451,7 +451,6 @@ package snoop_test;
           ace_cr_beat.cr_resp[4:2] = $urandom_range(0,3'b111);//$urandom_range(0,5'b11111);
           ace_cr_beat.cr_resp[1]   = 'b0;
           ace_cr_beat.cr_resp[0]   = $urandom_range(0,1);
-
         end
         rand_wait(CR_MIN_WAIT_CYCLES, CR_MAX_WAIT_CYCLES);
         drv.send_cr(ace_cr_beat);
