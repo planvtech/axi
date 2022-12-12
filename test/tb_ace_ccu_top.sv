@@ -53,8 +53,8 @@ module tb_ace_ccu_top #(
     NoSlvPorts:         TbNumMst,
     MaxMstTrans:        10,
     MaxSlvTrans:        6,
-    FallThrough:        1'b0,
-    LatencyMode:        ace_pkg::CUT_ALL_AX,
+    FallThrough:        1'b1,
+    LatencyMode:        ace_pkg::NO_LATENCY,
     AxiIdWidthSlvPorts: AxiIdWidthMasters,
     AxiIdUsedSlvPorts:  AxiIdUsed,
     UniqueIds:          TbUniqueIds,
@@ -86,6 +86,13 @@ module tb_ace_ccu_top #(
   `AXI_TYPEDEF_REQ_T(slv_req_t, aw_chan_slv_t, w_chan_t, ar_chan_slv_t)
   `AXI_TYPEDEF_RESP_T(slv_resp_t, b_chan_slv_t, r_chan_slv_t)
 
+  `SNOOP_TYPEDEF_AC_CHAN_T(snoop_ac_t, addr_t)
+  `SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, data_t)  
+  `SNOOP_TYPEDEF_CR_CHAN_T(snoop_cr_t)  
+  `SNOOP_TYPEDEF_REQ_T(snoop_req_t, snoop_ac_t)
+  `SNOOP_TYPEDEF_RESP_T(snoop_resp_t, snoop_cd_t, snoop_cr_t)
+
+
   typedef ace_test::ace_rand_master #(
     // AXI interface parameters
     .AW ( AxiAddrWidth       ),
@@ -113,6 +120,22 @@ module tb_ace_ccu_top #(
     .TT ( TestTime         )
   ) axi_rand_slave_t;
 
+  typedef snoop_test::snoop_rand_slave #(
+    // ADDR and Data interface parameters
+    .AW ( AxiAddrWidth    ),
+    .DW ( AxiDataWidth    ),
+    // Stimuli application and test time
+    .TA ( ApplTime),
+    .TT ( TestTime),
+    .RAND_RESP ( '0),
+    // Upper and lower bounds on wait cycles on Ax, W, and resp (R and B) channels
+    .AC_MIN_WAIT_CYCLES ( 2),
+    .AC_MAX_WAIT_CYCLES ( 15),
+    .CR_MIN_WAIT_CYCLES ( 2),
+    .CR_MAX_WAIT_CYCLES ( 15),
+    .CD_MIN_WAIT_CYCLES ( 2),
+    .CD_MAX_WAIT_CYCLES ( 15)
+  )snoop_rand_slave_t;
   // -------------
   // DUT signals
   // -------------
@@ -128,6 +151,11 @@ module tb_ace_ccu_top #(
   // slave structs
   slv_req_t  [TbNumSlv-1:0] slaves_req;
   slv_resp_t [TbNumSlv-1:0] slaves_resp;
+
+  // snoop structs
+  snoop_req_t  [TbNumMst-1:0] snoop_req;
+  snoop_resp_t [TbNumMst-1:0] snoop_resp;
+
 
   // -------------------------------
   // AXI Interfaces
@@ -183,11 +211,23 @@ module tb_ace_ccu_top #(
   SNOOP_BUS #(
     .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
     .SNOOP_DATA_WIDTH ( AxiDataWidth      )
-  ) snp [TbNumMst-1:0] ();
-
+  ) snoop [TbNumMst-1:0] ();
+  SNOOP_BUS_DV #(
+    .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+    .SNOOP_DATA_WIDTH ( AxiDataWidth      )
+  ) snoop_dv [TbNumMst-1:0](clk);
+  SNOOP_BUS_DV #(
+    .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+    .SNOOP_DATA_WIDTH ( AxiDataWidth      )
+  ) snoop_monitor_dv [TbNumMst-1:0](clk);
+   for (genvar i = 0; i < TbNumMst; i++) begin : gen_conn_dv_snoop
+    `SNOOP_ASSIGN(snoop_dv[i], snoop[i])
+    `SNOOP_ASSIGN_TO_REQ(snoop_req[i], snoop[i])
+    `SNOOP_ASSIGN_TO_RESP(snoop_resp[i], snoop[i])
+  end
 
   // -------------------------------
-  // AXI Rand Masters and Slaves
+  // AXI and SNOOP Rand Masters and Slaves
   // -------------------------------
   // Masters control simulation run time
   ace_rand_master_t ace_rand_master [TbNumMst];
@@ -204,6 +244,17 @@ module tb_ace_ccu_top #(
     end
   end
 
+  snoop_rand_slave_t snoop_rand_slave [TbNumMst];
+  for (genvar i = 0; i < TbNumMst; i++) begin : gen_rand_snoop
+    initial begin
+      snoop_rand_slave[i] = new( snoop_dv[i] );
+      snoop_rand_slave[i].reset();
+      @(posedge rst_n);
+      snoop_rand_slave[i].run();
+    end
+  end
+
+
   axi_rand_slave_t axi_rand_slave [1];
   for (genvar i = 0; i < TbNumSlv; i++) begin : gen_rand_slave
     initial begin
@@ -213,6 +264,9 @@ module tb_ace_ccu_top #(
       axi_rand_slave[i].run();
     end
   end
+
+  
+
 
   initial begin : proc_monitor
     static tb_ace_ccu_pkg::ace_ccu_monitor #(
@@ -224,7 +278,7 @@ module tb_ace_ccu_top #(
       .NoMasters         ( TbNumMst            ),
       .NoSlaves          ( TbNumSlv             ),
       .TimeTest          ( TestTime             )
-    ) monitor = new( master_monitor_dv, slave_monitor_dv );
+    ) monitor = new( master_monitor_dv, slave_monitor_dv, snoop_monitor_dv );
     fork
       monitor.run();
       do begin
@@ -259,7 +313,7 @@ module tb_ace_ccu_top #(
     .clk_i                  ( clk     ),
     .rst_ni                 ( rst_n   ),
     .test_i                 ( 1'b0    ),
-    .snoop_ports            ( snp   ),
+    .snoop_ports            ( snoop   ),
     .slv_ports              ( master  ),
     .mst_ports              ( slave[0]   )
   );
@@ -337,6 +391,32 @@ module tb_ace_ccu_top #(
     );
   end
 
+// logger for snoop modules
+  for (genvar i = 0; i < TbNumMst; i++) begin : gen_snoop_logger
+    snoop_chan_logger #(
+      .TestTime  ( TestTime      ), // Time after clock, where sampling happens
+      .LoggerName( $sformatf("axi_logger_snoop_%0d",i)),
+      .ac_chan_t ( snoop_ac_t ), // AW type
+      .cr_chan_t ( snoop_cr_t ), // CR type
+      .cd_chan_t ( snoop_cd_t )  // CD type
+    ) i_snoop_channel_logger (
+      .clk_i      ( clk         ),    // Clock
+      .rst_ni     ( rst_n       ),    // Asynchronous reset active low, when `1'b0` no sampling
+      .end_sim_i  ( &end_of_sim ),
+      // AC channel
+      .ac_chan_i  ( snoop_req[i].ac        ),
+      .ac_valid_i ( snoop_req[i].ac_valid  ),
+      .ac_ready_i ( snoop_resp[i].ac_ready ),
+      // CR channel
+      .cr_chan_i   ( snoop_resp[i].cr_resp ),
+      .cr_valid_i  ( snoop_resp[i].cr_valid),
+      .cr_ready_i  ( snoop_req[i].cr_ready ),
+      // CR channel
+      .cd_chan_i   ( snoop_resp[i].cd      ),
+      .cd_valid_i  ( snoop_resp[i].cd_valid),
+      .cd_ready_i  ( snoop_req[i].cd_ready )
+    );
+  end
 
   for (genvar i = 0; i < TbNumMst; i++) begin : gen_connect_master_monitor
     assign master_monitor_dv[i].aw_id       = master[i].aw_id    ;
@@ -353,7 +433,7 @@ module tb_ace_ccu_top #(
     assign master_monitor_dv[i].aw_user     = master[i].aw_user  ;
     assign master_monitor_dv[i].aw_valid    = master[i].aw_valid ;
     assign master_monitor_dv[i].aw_ready    = master[i].aw_ready ;
-    assign master_monitor_dv[i].aw_awsnoop  = master[i].aw_awsnoop;
+    assign master_monitor_dv[i].aw_snoop    = master[i].aw_snoop;
     assign master_monitor_dv[i].aw_bar      = master[i].aw_bar ;
     assign master_monitor_dv[i].aw_domain   = master[i].aw_domain ;
     assign master_monitor_dv[i].aw_awunique = master[i].aw_awunique ;
@@ -381,7 +461,7 @@ module tb_ace_ccu_top #(
     assign master_monitor_dv[i].ar_user     = master[i].ar_user  ;
     assign master_monitor_dv[i].ar_valid    = master[i].ar_valid ;
     assign master_monitor_dv[i].ar_ready    = master[i].ar_ready ;
-    assign master_monitor_dv[i].ar_arsnoop  = master[i].ar_arsnoop ;
+    assign master_monitor_dv[i].ar_snoop    = master[i].ar_snoop ;
     assign master_monitor_dv[i].ar_bar      = master[i].ar_bar ;
     assign master_monitor_dv[i].ar_domain   = master[i].ar_domain ;
     assign master_monitor_dv[i].r_id        = master[i].r_id     ;
@@ -438,5 +518,19 @@ module tb_ace_ccu_top #(
     assign slave_monitor_dv[i].r_user       = slave[i].r_user   ;
     assign slave_monitor_dv[i].r_valid      = slave[i].r_valid  ;
     assign slave_monitor_dv[i].r_ready      = slave[i].r_ready  ;
+  end
+  for (genvar i = 0; i < TbNumMst; i++) begin : gen_connect_snoop_monitor
+    assign snoop_monitor_dv[i].ac_valid     = snoop[i].ac_valid;
+    assign snoop_monitor_dv[i].ac_ready     = snoop[i].ac_ready;
+    assign snoop_monitor_dv[i].ac_snoop     = snoop[i].ac_snoop;
+    assign snoop_monitor_dv[i].ac_addr      = snoop[i].ac_addr;
+    assign snoop_monitor_dv[i].ac_prot      = snoop[i].ac_prot;
+    assign snoop_monitor_dv[i].cr_valid     = snoop[i].cr_valid;
+    assign snoop_monitor_dv[i].cr_ready     = snoop[i].cr_ready;
+    assign snoop_monitor_dv[i].cr_resp      = snoop[i].cr_resp;
+    assign snoop_monitor_dv[i].cd_valid     = snoop[i].cd_valid;
+    assign snoop_monitor_dv[i].cd_ready     = snoop[i].cd_ready;
+    assign snoop_monitor_dv[i].cd_data      = snoop[i].cd_data;
+    assign snoop_monitor_dv[i].cd_last      = snoop[i].cd_last;
   end
 endmodule

@@ -345,9 +345,8 @@ package snoop_test;
         automatic ace_cd_beat_t ace_cd_beat;
         rand_wait(CR_MIN_WAIT_CYCLES, CR_MAX_WAIT_CYCLES);
         drv.recv_cr(ace_cr_beat);
-        if (!ace_cr_beat.cr_resp.error & ace_cr_beat.cr_resp.dataTransfer) begin
+        if (!ace_cr_beat.cr_resp.error & ace_cr_beat.cr_resp.dataTransfer)
           drv.recv_cd(ace_cd_beat);
-        end
       end
     endtask
 
@@ -445,8 +444,14 @@ package snoop_test;
         automatic ace_ac_beat_t ace_ac_beat;
         automatic ace_cr_beat_t  ace_cr_beat = new;
         wait (ace_ac_queue.size() > 0);
-        // random response
-        ace_cr_beat.cr_resp = $urandom_range(0,5'b11111);
+        ace_ac_beat         = ace_ac_queue.pop_front();
+        if(ace_ac_beat.ac_snoop == snoop_pkg::CLEAN_INVALID) begin
+          ace_cr_beat.cr_resp = 0;
+        end else begin
+          ace_cr_beat.cr_resp[4:2] = $urandom_range(0,3'b111);//$urandom_range(0,5'b11111);
+          ace_cr_beat.cr_resp[1]   = 'b0;
+          ace_cr_beat.cr_resp[0]   = $urandom_range(0,1);
+        end
         rand_wait(CR_MIN_WAIT_CYCLES, CR_MAX_WAIT_CYCLES);
         drv.send_cr(ace_cr_beat);
         if (ace_cr_beat.cr_resp.dataTransfer && !ace_cr_beat.cr_resp.error) begin
@@ -463,6 +468,10 @@ package snoop_test;
         automatic addr_t    byte_addr;
         wait (cd_wait_cnt > 0);
         // random response
+        ace_cd_beat.cd_data = $urandom();
+        ace_cd_beat.cd_last = 1'b0;
+        rand_wait(CD_MIN_WAIT_CYCLES, CD_MAX_WAIT_CYCLES);
+        drv.send_cd(ace_cd_beat);
         ace_cd_beat.cd_data = $urandom();
         ace_cd_beat.cd_last = 1'b1;
         rand_wait(CD_MIN_WAIT_CYCLES, CD_MAX_WAIT_CYCLES);
@@ -514,9 +523,9 @@ module snoop_chan_logger #(
 );
 
   // queues for writes and reads
-  ac_chan_t ac_queue[$];
-  cr_chan_t  cr_queue[$];
-  cd_chan_t  cd_queue[$];
+  ac_chan_t ac_queues[$];
+  cr_chan_t  cr_queues[$];
+  cd_chan_t  cd_queues[$];
 
   // channel sampling into queues
   always @(posedge clk_i) #TestTime begin : proc_channel_sample
@@ -531,13 +540,13 @@ module snoop_chan_logger #(
         log_file = $sformatf("./ace_log/%s/snoop_read.log", LoggerName);
         fd = $fopen(log_file, "a");
         if (fd) begin
-          log_str = $sformatf("%0t> AC, SNOOP %b, PROT %b", $time, ac_beat.ac_snoop, ac_beat.ac_prot);
+          log_str = $sformatf("%0t> AC, SNOOP %b, PROT %b", $time, ac_chan_i.snoop, ac_chan_i.prot);
           $fdisplay(fd, log_str);
           $fclose(fd);
         end
-        ac_beat.ac_addr   = ac_chan_i.ac_addr;
-        ac_beat.ac_snoop    = ac_chan_i.ac_snoop;
-        ac_beat.ac_prot   = ac_chan_i.ac_prot;
+        ac_beat.addr   = ac_chan_i.addr;
+        ac_beat.snoop  = ac_chan_i.snoop;
+        ac_beat.prot   = ac_chan_i.prot;
         ac_queues.push_back(ac_beat);
       end
       // CR channel
@@ -581,20 +590,20 @@ module snoop_chan_logger #(
       @(posedge clk_i);
 
       // update the read log files
-      while (ac_queues.size() != 0 && cr_queues.size() != 0) begin
+      while (ac_queues.size() != 0 && cr_queues.size() != 0 && cd_queues.size()!=0) begin
         ac_beat = ac_queues.pop_front();
         cr_beat  = cr_queues.pop_front();
-        log_name = $sformatf("./axi_log/%s/read.log", LoggerName);
+        log_name = $sformatf("./ace_log/%s/read.log", LoggerName);
         fd = $fopen(log_name, "a");
         if (fd) begin
-          log_string = $sformatf("%0t> CR %d RESP: %b, ",
-                          $time, no_r_beat, cr_beat.cr_resp);
+          log_string = $sformatf("%0t ns> CR %d RESP: %b, ",
+                          $time, no_r_beat, cr_beat);
           $fdisplay(fd, log_string);
-          if (cr_beat.cr_resp.dataTransfer && !cr_beat.cr_resp.error) begin
+          if (cr_beat.dataTransfer && !cr_beat.error) begin
             cd_beat = cd_queues.pop_front();
-            log_string = $sformatf("%0t> CD %d DATA: %b, ",
-                            $time, no_r_beat, cd_beat.cd_data);
-            $fdisplay(fd, log_string);
+            log_string = $sformatf("%0t ns> CD %d DATA: %h, ",
+                            $time, no_r_beat, cd_beat.data);                
+            $fdisplay(fd, log_string);              
           end
           $fclose(fd);
         end

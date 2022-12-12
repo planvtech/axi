@@ -33,6 +33,7 @@ package tb_ace_ccu_pkg;
     typedef logic [AxiAddrWidth-1:0]      axi_addr_t;
 
     typedef logic [$clog2(NoMasters)-1:0] idx_mst_t;
+    typedef logic [$clog2(NoMasters+1)-1:0] idx_mst_plus1_t;
     typedef int unsigned                  idx_slv_t; // from rule_t
 
     typedef struct packed {
@@ -78,6 +79,10 @@ package tb_ace_ccu_pkg;
       .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
       .AXI_USER_WIDTH ( AxiUserWidth      )
     ) slaves_axi [NoSlaves-1:0];
+    virtual SNOOP_BUS_DV #(
+      .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+      .SNOOP_DATA_WIDTH ( AxiDataWidth      )
+    ) slaves_snoop [NoMasters-1:0];
     //-----------------------------------------
     // Queues and FIFOs to hold the expected ids
     //-----------------------------------------
@@ -114,11 +119,16 @@ package tb_ace_ccu_pkg;
         .AXI_DATA_WIDTH ( AxiDataWidth      ),
         .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
         .AXI_USER_WIDTH ( AxiUserWidth      )
-      ) axi_slaves_vif [NoSlaves-1:0]
+      ) axi_slaves_vif [NoSlaves-1:0],
+      virtual SNOOP_BUS_DV #(
+        .SNOOP_ADDR_WIDTH ( AxiAddrWidth      ),
+        .SNOOP_DATA_WIDTH ( AxiDataWidth      )
+      ) snoop_slaves_vif [NoMasters-1:0]
      );
       begin
         this.masters_axi     = axi_masters_vif;
         this.slaves_axi      = axi_slaves_vif;
+        this.slaves_snoop    = snoop_slaves_vif;
         this.tests_expected  = 0;
         this.tests_conducted = 0;
         this.tests_failed    = 0;
@@ -167,8 +177,8 @@ package tb_ace_ccu_pkg;
                    slv_axi_len:  masters_axi[i].aw_len   };
         this.exp_aw_queue[to_slave_idx].push(exp_aw_id, exp_aw);
         incr_expected_tests(3);
-        $display("%0tns > Master %0d: AW to Slave %0d: Axi ID: %b",
-            $time, i, to_slave_idx, masters_axi[i].aw_id);
+        $display("%0tns > Master %0d: AW to Slave %0d: Axi ID: %b %x",
+                 $time, i, to_slave_idx, masters_axi[i].aw_id, masters_axi[i].aw_len);
         // populate the expected b queue anyway
         exp_b = '{mst_axi_id: masters_axi[i].aw_id, last: 1'b1};
         this.exp_b_queue[i].push(masters_axi[i].aw_id, exp_b);
@@ -194,17 +204,29 @@ package tb_ace_ccu_pkg;
     // amount of W beats in the respective fifo. Emphasis of the last flag.
     task automatic monitor_slv_aw(input int unsigned i);
       exp_ax_t    exp_aw;
+       slv_axi_id_t exp_aw_id;
       slave_exp_t exp_slv_w;
       //  $display("%0t > Was triggered: aw_valid %b, aw_ready: %b",
       //       $time(), slaves_axi[i].aw_valid, slaves_axi[i].aw_ready);
       if (slaves_axi[i].aw_valid && slaves_axi[i].aw_ready) begin
         // test if the aw beat was expected
-        exp_aw = this.exp_aw_queue[i].pop_id(slaves_axi[i].aw_id);
+        if (((slaves_axi[i].aw_id >> AxiIdWidthMasters) >> $clog2(NoMasters)) == NoMasters) begin
+           slv_axi_id_t tmp;
+           tmp = slaves_axi[i].aw_id[AxiIdWidthSlaves-$clog2(NoMasters+1)-1:0];
+           exp_aw = this.exp_aw_queue[i].pop_id(tmp);
+           exp_aw_id = {idx_mst_plus1_t'(NoMasters), exp_aw.slv_axi_id[$clog2(NoMasters)+AxiIdWidthMasters-1:0]};
+        end
+        else begin
+           slv_axi_id_t tmp;
+           tmp = {slaves_axi[i].aw_id[AxiIdWidthSlaves-1:AxiIdWidthSlaves-$clog2(NoMasters+1)], slaves_axi[i].aw_id[AxiIdWidthMasters-1:0]};
+           exp_aw = this.exp_aw_queue[i].pop_id(tmp);
+           exp_aw_id = {exp_aw.slv_axi_id[$clog2(NoMasters)+AxiIdWidthMasters-1:AxiIdWidthMasters], idx_mst_t'(0), exp_aw.slv_axi_id[AxiIdWidthMasters-1:0]};
+        end
         $display("%0tns > Slave  %0d: AW Axi ID: %b",
             $time, i, slaves_axi[i].aw_id);
-        if (exp_aw.slv_axi_id != slaves_axi[i].aw_id) begin
+        if (exp_aw_id != slaves_axi[i].aw_id) begin
           incr_failed_tests(1);
-          $warning("Slave %0d: Unexpected AW with ID: %b", i, slaves_axi[i].aw_id);
+           $warning("Slave %0d: Unexpected AW with ID: %b", i, slaves_axi[i].aw_id);
         end
         if (exp_aw.slv_axi_addr != slaves_axi[i].aw_addr) begin
           incr_failed_tests(1);
@@ -213,8 +235,8 @@ package tb_ace_ccu_pkg;
         end
         if (exp_aw.slv_axi_len != slaves_axi[i].aw_len) begin
           incr_failed_tests(1);
-          $warning("Slave %0d: Unexpected AW with ID: %b and LEN: %h, exp: %h",
-              i, slaves_axi[i].aw_id, slaves_axi[i].aw_len, exp_aw.slv_axi_len);
+          $warning("Slave %0d: Unexpected AW with ID: %b and LEN: %h, exp: %h %b",
+                   i, slaves_axi[i].aw_id, slaves_axi[i].aw_len, exp_aw.slv_axi_len, exp_aw.slv_axi_id);
         end
         incr_conducted_tests(3);
 
@@ -378,6 +400,36 @@ package tb_ace_ccu_pkg;
       end
     endtask : monitor_mst_r
 
+    // This task monitors the AC channel on snoop slave. It captures incoming snoop request,
+    task automatic monitor_snoop_ac(input int unsigned i);
+      if (slaves_snoop[i].ac_valid && slaves_snoop[i].ac_ready) begin
+        $display("%0tns > SNOOP %0d: AC_SNOOP %b: ",
+              $time, i, slaves_snoop[i].ac_snoop);
+        if(slaves_snoop[i].ac_snoop == snoop_pkg::CLEAN_INVALID && i == (NoMasters-1))
+          incr_conducted_tests(1); 
+      end
+    endtask:monitor_snoop_ac
+
+    // This task monitors the CR channel on snoop slave. It captures outgoing snoop response
+    task automatic monitor_snoop_cr(input int unsigned i);
+      if (slaves_snoop[i].cr_valid && slaves_snoop[i].cr_ready) begin
+        $display("%0tns > Got Response from SNOOP %0d: CR_RESP %b: ",
+              $time, i, slaves_snoop[i].cr_resp);
+        if(slaves_snoop[i].cr_resp[0] && !slaves_snoop[i].cr_resp[1])
+          incr_expected_tests(1);
+      end
+    endtask:monitor_snoop_cr
+
+    // This task monitors the CD channel on snoop slave. It captures outgoing snoop data,
+    task automatic monitor_snoop_cd(input int unsigned i);
+      if (slaves_snoop[i].cd_valid && slaves_snoop[i].cd_ready) begin
+        $display("%0tns > Got Data from SNOOP %0d: with last flag %b: ",
+              $time, i, slaves_snoop[i].cd_last);
+          incr_conducted_tests(slaves_snoop[i].cd_last);      
+      end
+    endtask:monitor_snoop_cd
+
+
     // Some tasks to manage bookkeeping of the tests conducted.
     task incr_expected_tests(input int unsigned times);
       cnt_sem.get();
@@ -419,6 +471,11 @@ package tb_ace_ccu_pkg;
                   monitor_mst_ar(i);
                 end
               end
+              proc_snoop_ac: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_snoop_ac(i);
+                end
+              end
             join : PushMon
             // this one pops and pushes something
             proc_slv_aw: begin
@@ -448,6 +505,16 @@ package tb_ace_ccu_pkg;
                   monitor_mst_r(i);
                 end
               end
+              proc_snoop_cr: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_snoop_cr(i);
+                end
+              end
+              proc_snoop_cd: begin
+                for (int unsigned i = 0; i < NoMasters; i++) begin
+                  monitor_snoop_cd(i);
+                end
+              end
             join : PopMon
             // check the slave W fifos last
             proc_check_slv_w: begin
@@ -455,6 +522,7 @@ package tb_ace_ccu_pkg;
                 check_slv_w(i);
               end
             end
+
             cycle_end();
           end while (1'b1);
         end

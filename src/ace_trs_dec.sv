@@ -11,7 +11,6 @@
 // specific language governing permissions and limitations under the License.
 //
 
-
 module ace_trs_dec
 #(
   parameter type slv_ace_req_t = logic

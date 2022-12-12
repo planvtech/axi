@@ -80,6 +80,7 @@ sources:
   - src/axi_to_mem_interleaved.sv
   - src/axi_to_mem_split.sv
   - src/ace_trs_dec.sv
+  - src/ccu_fsm.sv
   # Level 4
   - src/axi_iw_converter.sv
   - src/axi_lite_xbar.sv
