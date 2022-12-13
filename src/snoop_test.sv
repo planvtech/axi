@@ -137,7 +137,7 @@ package snoop_test;
 
     /// Wait for a beat on the AC channel.
     task recv_ac (
-      input ace_ac_beat_t beat
+      output ace_ac_beat_t beat
     );
       snoop.ac_ready <= #TA 1;
       cycle_start();
@@ -602,8 +602,8 @@ module snoop_chan_logger #(
           if (cr_beat.dataTransfer && !cr_beat.error) begin
             cd_beat = cd_queues.pop_front();
             log_string = $sformatf("%0t ns> CD %d DATA: %h, ",
-                            $time, no_r_beat, cd_beat.data);                
-            $fdisplay(fd, log_string);              
+                            $time, no_r_beat, cd_beat.data);
+            $fdisplay(fd, log_string);
           end
           $fclose(fd);
         end
