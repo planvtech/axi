@@ -1463,8 +1463,8 @@ module ace_chan_logger #(
         log_file = $sformatf("./axi_log/%s/write.log", LoggerName);
         fd = $fopen(log_file, "a");
         if (fd) begin
-          log_str = $sformatf("%0t> ID: %h AW on channel: LEN: %d, ATOP: %b",
-                        $time, aw_chan_i.id, aw_chan_i.len, aw_chan_i.atop);
+          log_str = $sformatf("%0t> ID: %h AW on channel: ADDR: 0x%h LEN: %d, ATOP: %b",
+                        $time, aw_chan_i.id, aw_chan_i.addr, aw_chan_i.len, aw_chan_i.atop);
           $fdisplay(fd, log_str);
           $fclose(fd);
         end
@@ -1492,8 +1492,8 @@ module ace_chan_logger #(
           log_file = $sformatf("./axi_log/%s/read_%0h.log", LoggerName, aw_chan_i.id);
           fd = $fopen(log_file, "a");
           if (fd) begin
-            log_str = $sformatf("%0t> ID: %h AR on channel: LEN: %d injected ATOP: %b",
-                          $time, ar_beat.id, ar_beat.len, ar_beat.atop);
+            log_str = $sformatf("%0t> ID: %h AR on channel: ADDR: 0x%h LEN: %d injected ATOP: %b",
+                          $time, ar_beat.id, ar_beat.addr, ar_beat.len, ar_beat.atop);
             $fdisplay(fd, log_str);
             $fclose(fd);
           end
@@ -1512,8 +1512,8 @@ module ace_chan_logger #(
         log_file = $sformatf("./axi_log/%s/read_%0h.log", LoggerName, ar_chan_i.id);
         fd = $fopen(log_file, "a");
         if (fd) begin
-          log_str = $sformatf("%0t> ID: %h AR on channel: LEN: %d",
-                          $time, ar_chan_i.id, ar_chan_i.len);
+          log_str = $sformatf("%0t> ID: %h AR on channel: ADDR: 0x%h LEN: %d",
+                          $time, ar_chan_i.id, ar_chan_i.addr, ar_chan_i.len);
           $fdisplay(fd, log_str);
           $fclose(fd);
         end
@@ -1592,8 +1592,8 @@ module ace_chan_logger #(
         aw_beat = aw_queue[0];
         w_beat  = w_queue.pop_front();
 
-        log_string = $sformatf("%0t> ID: %h W %d of %d, LAST: %b ATOP: %b",
-                        $time, aw_beat.id, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop);
+        log_string = $sformatf("%0t> ID: %h ADDR 0x%h W %d of %d, LAST: %b ATOP: %b",
+                        $time, aw_beat.id, aw_beat.addr, no_w_beat, aw_beat.len, w_beat.last, aw_beat.atop);
 
         log_name = $sformatf("./axi_log/%s/write.log", LoggerName);
         fd = $fopen(log_name, "a");
@@ -1635,8 +1635,8 @@ module ace_chan_logger #(
           log_name = $sformatf("./axi_log/%s/read_%0h.log", LoggerName, i);
           fd = $fopen(log_name, "a");
           if (fd) begin
-            log_string = $sformatf("%0t> ID: %h R %d of %d, LAST: %b ATOP: %b",
-                            $time, r_beat.id, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop);
+            log_string = $sformatf("%0t> ID: %h ADDR: 0x%h R %d of %d, LAST: %b ATOP: %b",
+                            $time, r_beat.id, ar_beat.addr, no_r_beat[i], ar_beat.len, r_beat.last, ar_beat.atop);
 
             $fdisplay(fd, log_string);
             // write out error if last beat does not match!

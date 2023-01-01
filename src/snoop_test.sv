@@ -137,7 +137,7 @@ package snoop_test;
 
     /// Wait for a beat on the AC channel.
     task recv_ac (
-      input ace_ac_beat_t beat
+      output ace_ac_beat_t beat
     );
       snoop.ac_ready <= #TA 1;
       cycle_start();
@@ -540,7 +540,7 @@ module snoop_chan_logger #(
         log_file = $sformatf("./ace_log/%s/snoop_read.log", LoggerName);
         fd = $fopen(log_file, "a");
         if (fd) begin
-          log_str = $sformatf("%0t> AC, SNOOP %b, PROT %b", $time, ac_chan_i.snoop, ac_chan_i.prot);
+          log_str = $sformatf("%0t> AC, ADDR: 0x%h SNOOP %b, PROT %b", $time, ac_chan_i.addr, ac_chan_i.snoop, ac_chan_i.prot);
           $fdisplay(fd, log_str);
           $fclose(fd);
         end
@@ -576,7 +576,7 @@ module snoop_chan_logger #(
     $system(log_name);
 
     // open log files
-    log_name = $sformatf("./ace_log/%s/read.log", LoggerName);
+    log_name = $sformatf("./ace_log/%s/snoop_read.log", LoggerName);
     fd = $fopen(log_name, "w");
     if (fd) begin
       $display("File was opened successfully : %0d", fd);
@@ -593,7 +593,7 @@ module snoop_chan_logger #(
       while (ac_queues.size() != 0 && cr_queues.size() != 0 && cd_queues.size()!=0) begin
         ac_beat = ac_queues.pop_front();
         cr_beat  = cr_queues.pop_front();
-        log_name = $sformatf("./ace_log/%s/read.log", LoggerName);
+        log_name = $sformatf("./ace_log/%s/snoop_read.log", LoggerName);
         fd = $fopen(log_name, "a");
         if (fd) begin
           log_string = $sformatf("%0t ns> CR %d RESP: %b, ",
