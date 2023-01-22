@@ -454,16 +454,21 @@ module ccu_fsm
         data_received    <= '0;
         cd_last          <= '0;
         m2s_resp_holder  <= '0;
-      end else if(state_q == SEND_CD_READY) begin
-        data_received    <= '0;
-        cd_last          <= '0;
-        m2s_resp_holder  <= '0;
       end else begin
-        for (int i = 0; i < NoMstPorts; i = i + 1) begin
-          if(m2s_resp_i[i].cd_valid & s2m_req_o[i].cd_ready) begin
-            data_received[i]    <= m2s_resp_i[i].cd_valid;
-            cd_last[i]          <= m2s_resp_i[i].cd.last;
-            m2s_resp_holder[i]  <= m2s_resp_i[i];
+        if(state_q == SEND_DATA) begin
+          data_received    <= '0;
+          m2s_resp_holder  <= '0;
+        end
+        else if(state_q == IDLE) begin
+          cd_last          <= '0;
+        end
+        else begin
+          for (int i = 0; i < NoMstPorts; i = i + 1) begin
+            if(state_q == READ_SNP_DATA && m2s_resp_i[i].cd_valid) begin
+              data_received[i]    <= m2s_resp_i[i].cd_valid;
+              cd_last[i]          <= m2s_resp_i[i].cd.last;
+              m2s_resp_holder[i]  <= m2s_resp_i[i];
+            end
           end
         end
       end
