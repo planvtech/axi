@@ -181,7 +181,7 @@ module ccu_fsm
 
         READ_MEM: begin
             // wait for responding slave to assert r_valid
-            if(ccu_resp_i.r_valid && ccu_req_i.r_ready) begin
+            if(ccu_resp_i.r_valid & ccu_req_i.r_ready) begin
                 if(ccu_resp_i.r.last) begin
                     state_d = IDLE;
                 end else begin
@@ -228,7 +228,7 @@ module ccu_fsm
 
         SEND_AXI_REQ_W: begin
             // wait for responding slave to assert aw_ready
-            if(ccu_resp_i.aw_ready !='b1) begin
+            if(ccu_resp_i.aw_ready != 1'b1) begin
                 state_d = SEND_AXI_REQ_W;
             end else begin
                 state_d = WRITE_MEM;
@@ -237,7 +237,7 @@ module ccu_fsm
 
         WRITE_MEM: begin
             // wait for responding slave to send b_valid
-            if((ccu_resp_i.b_valid && ccu_req_i.b_ready)) begin
+            if(ccu_resp_i.b_valid & ccu_req_i.b_ready) begin
                   if(ccu_req_holder.aw.atop [5]) begin
                     state_d = READ_MEM;
                   end else begin
@@ -344,8 +344,8 @@ module ccu_fsm
 
         SEND_INVALID_W:begin
             for (int unsigned n = 0; n < NoMstPorts; n = n + 1) begin
-                s2m_req_o[n].ac.addr   =   ccu_req_holder.ar.addr;
-                s2m_req_o[n].ac.prot   =   ccu_req_holder.ar.prot;
+                s2m_req_o[n].ac.addr   =   ccu_req_holder.aw.addr;
+                s2m_req_o[n].ac.prot   =   ccu_req_holder.aw.prot;
                 s2m_req_o[n].ac.snoop  =   'b1001;
                 s2m_req_o[n].ac_valid  =   !ac_ready[n];
             end
@@ -502,5 +502,24 @@ module ccu_fsm
       end
     end
   end
+/*
+  xlnx_ila i_ila
+    (
+     .clk (clk_i),
+     .probe0 (ccu_req_i.ar.addr[31:0]),
+     .probe1 (ccu_req_i.aw.addr[31:0]),
+     .probe2 (ccu_resp_o.r.data[31:0]),
+     .probe3 (s2m_req_o[0].ac.addr[31:0]),
+     .probe4 (s2m_req_o[1].ac.addr[31:0]),
+     .probe5 ({s2m_req_o[0].ac_valid, s2m_req_o[0].ac.snoop, m2s_resp_i[0].cd_valid, m2s_resp_i[0].cr_valid, m2s_resp_i[0].cr_resp, s2m_req_o[1].ac_valid, s2m_req_o[1].ac.snoop, m2s_resp_i[1].cd_valid, m2s_resp_i[1].cr_valid, m2s_resp_i[1].cr_resp}),
+     .probe6 (m2s_resp_i[0].cd.data[31:0]),
+     .probe7 (m2s_resp_i[1].cd.data[31:0]),
+     .probe8 (ccu_req_i.w.data[31:0]),
+     .probe9 (ccu_resp_o.r.data[31:0]),
+     .probe10 ({ccu_req_i.ar.id, ccu_req_i.aw.id, ccu_resp_o.r.resp}),
+     .probe11 ('0),
+     .probe12 ({ccu_req_i.ar_valid, ccu_req_i.ar.snoop, ccu_req_i.aw.snoop, ccu_req_i.w_valid, ccu_resp_o.r_valid, state_q})
+     );
+*/
 
 endmodule
