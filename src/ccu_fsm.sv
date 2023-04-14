@@ -74,6 +74,12 @@ module ccu_fsm
   logic [1:0]               stored_cd_data;
   logic                                                    r_last;
   logic                                                    eot;
+  typedef struct packed {
+    logic        waiting_w;
+    logic        waiting_r;
+  } prio_t;
+
+  prio_t prio_d, prio_q;
 
     // ----------------------
     // Current State Block
@@ -82,9 +88,11 @@ module ccu_fsm
         if(!rst_ni) begin
             state_q <= IDLE;
             initiator_q <= '0;
+            prio_q <= '0;
         end else begin
             state_q <= state_d;
             initiator_q <= initiator_d;
+            prio_q <= prio_d;
         end
     end
 
@@ -95,18 +103,25 @@ module ccu_fsm
 
         state_d = state_q;
         initiator_d = initiator_q;
+        prio_d = prio_q;
 
         case(state_q)
 
         IDLE: begin
             initiator_d = '0;
+            prio_d = '0;
             //  wait for incoming valid request from master
-            if(ccu_req_i.ar_valid ) begin
+            if((ccu_req_i.ar_valid & !ccu_req_i.aw_valid) |
+               (ccu_req_i.ar_valid & prio_q.waiting_r) |
+               (ccu_req_i.ar_valid & !prio_q.waiting_w)) begin
                 state_d = DECODE_R;
                 initiator_d[ccu_req_i.ar.id[$size(ccu_req_i.ar.id)-1:$size(ccu_req_i.ar.id)-id_length]] = 1'b1;
-            end else if(ccu_req_i.aw_valid) begin
+                prio_d.waiting_w = ccu_req_i.aw_valid;
+            end else if((ccu_req_i.aw_valid & !ccu_req_i.ar_valid) |
+                        (ccu_req_i.aw_valid & prio_q.waiting_w)) begin
                 state_d = DECODE_W;
                 initiator_d[ccu_req_i.aw.id[$size(ccu_req_i.aw.id)-1:$size(ccu_req_i.aw.id)-id_length]] = 1'b1;
+                prio_d.waiting_r = ccu_req_i.ar_valid;
             end else begin
                 state_d = IDLE;
             end
@@ -374,12 +389,17 @@ module ccu_fsm
     always_ff @(posedge clk_i , negedge rst_ni) begin
         if(!rst_ni) begin
             ccu_req_holder <= '0;
-        end else if(state_q == IDLE && ccu_req_i.ar_valid  ) begin
+        end else if(state_q == IDLE &&
+                    ((ccu_req_i.ar_valid & !ccu_req_i.aw_valid) |
+                     (ccu_req_i.ar_valid & prio_q.waiting_r) |
+                     (ccu_req_i.ar_valid & !prio_q.waiting_w))) begin
             ccu_req_holder.ar 	    <=  ccu_req_i.ar;
             ccu_req_holder.ar_valid <=  ccu_req_i.ar_valid;
             ccu_req_holder.r_ready 	<=  ccu_req_i.r_ready;
 
-        end  else if(state_q == IDLE &&  ccu_req_i.aw_valid) begin
+        end  else if(state_q == IDLE &&
+                    ((ccu_req_i.aw_valid & !ccu_req_i.ar_valid) |
+                     (ccu_req_i.aw_valid & prio_q.waiting_w))) begin
             ccu_req_holder.aw 	    <=  ccu_req_i.aw;
             ccu_req_holder.aw_valid <=  ccu_req_i.aw_valid;
         end
@@ -504,3 +524,4 @@ module ccu_fsm
   end
 
 endmodule
+
