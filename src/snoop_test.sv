@@ -490,6 +490,63 @@ package snoop_test;
 
   endclass
 
+  /// Snoop Monitor.
+  class snoop_monitor #(
+    parameter AW = 32,
+    parameter DW = 32,
+    parameter time TA = 0ns , // stimuli application time
+    parameter time TT = 0ns   // stimuli test time
+  );
+
+    typedef snoop_test::snoop_driver #(
+      .AW(AW), .DW(DW), .TA(TA), .TT(TT)
+    ) snoop_driver_t;
+
+    typedef snoop_driver_t::ace_ac_beat_t ace_ac_beat_t;
+    typedef snoop_driver_t::ace_cd_beat_t ace_cd_beat_t;
+    typedef snoop_driver_t::ace_cr_beat_t ace_cr_beat_t;
+
+    snoop_driver_t          drv;
+    mailbox ac_mbx = new, cd_mbx = new, cr_mbx = new;
+
+    virtual SNOOP_BUS_DV #(
+      .SNOOP_ADDR_WIDTH(AW),
+      .SNOOP_DATA_WIDTH(DW)
+    ) snoop;
+
+    function new(
+      virtual SNOOP_BUS_DV #(
+        .SNOOP_ADDR_WIDTH(AW),
+        .SNOOP_DATA_WIDTH(DW)
+      ) snoop
+    );
+      this.drv = new(snoop);
+    endfunction
+
+    task monitor;
+      fork
+        // AC
+        forever begin
+          automatic ace_ac_beat_t beat;
+          this.drv.mon_ac(beat);
+          ac_mbx.put(beat);
+        end
+        // CR
+        forever begin
+          automatic ace_cr_beat_t beat;
+          this.drv.mon_cr(beat);
+          cr_mbx.put(beat);
+        end
+        // CD
+        forever begin
+          automatic ace_cd_beat_t beat;
+          this.drv.mon_cd(beat);
+          cd_mbx.put(beat);
+        end
+      join
+    endtask
+  endclass
+
 endpackage
 
 // non synthesisable ace snoop logger module
