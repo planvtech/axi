@@ -154,6 +154,18 @@ package tb_ace_ccu_pkg;
       @(posedge masters_axi[0].clk_i);
     endtask
 
+    // help function to decode AR
+    function automatic bit isCleanUnique (
+      input ace_pkg::arsnoop_t ar_snoop,
+      input ace_pkg::bar_t     ar_bar,
+      input ace_pkg::domain_t  ar_domain
+    );
+      if (ar_snoop == 4'b1011 && ar_bar[0] == 1'b0 && (ar_domain == 2'b10 || ar_domain == 2'b01))
+        return 1'b1;
+      else
+        return 1'b0;
+    endfunction
+
     // This task monitors a slave ports of the crossbar. Every time an AW beat is seen
     // it populates an id queue at the right master port (if there is no expected decode error),
     // populates the expected b response in its own id_queue and in case when the atomic bit [5]
@@ -310,6 +322,7 @@ package tb_ace_ccu_pkg;
       mst_axi_id_t   mst_axi_id;
       axi_addr_t     mst_axi_addr;
       axi_pkg::len_t mst_axi_len;
+      axi_pkg::len_t exp_len;
 
       idx_slv_t      exp_slv_idx;
       slv_axi_id_t   exp_slv_axi_id;
@@ -336,10 +349,15 @@ package tb_ace_ccu_pkg;
         this.exp_ar_queue[exp_slv_idx].push(exp_slv_axi_id, exp_slv_ar);
         incr_expected_tests(1);
         // push the required r beats into the right fifo
-        $display("        Expect R response, len: %0d.", masters_axi[i].ar_len);
-        for (int unsigned j = 0; j <= mst_axi_len; j++) begin
-          exp_mst_r = (j == mst_axi_len) ? '{mst_axi_id: mst_axi_id, last: 1'b1} :
-                                           '{mst_axi_id: mst_axi_id, last: 1'b0};
+        if (isCleanUnique(masters_axi[i].ar_snoop, masters_axi[i].ar_bar, masters_axi[i].ar_domain)) begin
+          exp_len = 0;
+        end else begin
+          exp_len = mst_axi_len;
+        end
+        $display("        Expect R response, len: %0d.", exp_len);
+        for (int unsigned j = 0; j <= exp_len; j++) begin
+          exp_mst_r = (j == exp_len) ? '{mst_axi_id: mst_axi_id, last: 1'b1} :
+                                       '{mst_axi_id: mst_axi_id, last: 1'b0};
           this.exp_r_queue[i].push(mst_axi_id, exp_mst_r);
           incr_expected_tests(1);
         end

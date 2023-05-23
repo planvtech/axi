@@ -1397,6 +1397,80 @@ endclass
 
   endclass
 
+  /// ACE Monitor.
+  class ace_monitor #(
+    /// AXI4+ATOP ID width
+    parameter int unsigned IW = 0,
+    /// AXI4+ATOP address width
+    parameter int unsigned AW = 0,
+    /// AXI4+ATOP data width
+    parameter int unsigned DW = 0,
+    /// AXI4+ATOP user width
+    parameter int unsigned UW = 0,
+    /// Stimuli test time
+    parameter time TT = 0ns
+  );
+
+    typedef ace_test::ace_driver #(
+      .AW(AW), .DW(DW), .IW(IW), .UW(UW), .TA(TT), .TT(TT)
+    ) ace_driver_t;
+
+    typedef ace_driver_t::ax_ace_beat_t ax_ace_beat_t;
+    typedef ace_driver_t::w_beat_t      w_beat_t;
+    typedef ace_driver_t::b_beat_t      b_beat_t;
+    typedef ace_driver_t::r_ace_beat_t  r_ace_beat_t;
+
+    ace_driver_t          drv;
+    mailbox aw_mbx = new, w_mbx = new, b_mbx = new,
+            ar_mbx = new, r_mbx = new;
+
+    function new(
+      virtual ACE_BUS_DV #(
+        .AXI_ADDR_WIDTH(AW),
+        .AXI_DATA_WIDTH(DW),
+        .AXI_ID_WIDTH(IW),
+        .AXI_USER_WIDTH(UW)
+      ) axi
+    );
+      this.drv = new(axi);
+    endfunction
+
+    task monitor;
+      fork
+        // AW
+        forever begin
+          automatic ax_ace_beat_t ax;
+          this.drv.mon_aw(ax);
+          aw_mbx.put(ax);
+        end
+        // W
+        forever begin
+          automatic w_beat_t w;
+          this.drv.mon_w(w);
+          w_mbx.put(w);
+        end
+        // B
+        forever begin
+          automatic b_beat_t b;
+          this.drv.mon_b(b);
+          b_mbx.put(b);
+        end
+        // AR
+        forever begin
+          automatic ax_ace_beat_t ax;
+          this.drv.mon_ar(ax);
+          ar_mbx.put(ax);
+        end
+        // R
+        forever begin
+          automatic r_ace_beat_t r;
+          this.drv.mon_r(r);
+          r_mbx.put(r);
+        end
+      join
+    endtask
+  endclass
+
 endpackage
 
 // non synthesisable axi logger module
