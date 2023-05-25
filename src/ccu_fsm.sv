@@ -398,6 +398,7 @@ module ccu_fsm
           // response to intiating master
           if (!r_eot) begin
             ccu_req_o.w_valid =  |stored_cd_data;
+            ccu_req_o.w.strb  =  '1;
             ccu_req_o.w.data  =   cd_data[w_last];
             ccu_req_o.w.last  =   w_last;
             ccu_req_o.b_ready = 'b1;
@@ -463,6 +464,7 @@ module ccu_fsm
           // response to intiating master
           if (!r_eot) begin
             ccu_req_o.w_valid =  |stored_cd_data;
+            ccu_req_o.w.strb  =  '1;
             ccu_req_o.w.data  =   cd_data[w_last];
             ccu_req_o.w.last  =   w_last;
             ccu_req_o.b_ready = 'b1;
