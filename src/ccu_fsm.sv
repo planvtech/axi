@@ -322,6 +322,9 @@ module ccu_fsm
     // Output Block
     // ----------------------
     always_comb begin : ccu_output_block
+        logic ar_addr_offset;
+
+        ar_addr_offset = ccu_req_holder.ar.addr[3];
 
         // Default Assignments
         ccu_req_o  = '0;
@@ -368,9 +371,19 @@ module ccu_fsm
             s2m_req_o[n].cd_ready  = !cd_last[n] & data_available[n];
           // response to intiating master
           if (!r_eot) begin
-            ccu_resp_o.r.data    = cd_data[r_last];
-            ccu_resp_o.r.last    = r_last;
-            ccu_resp_o.r_valid   = |stored_cd_data;
+            if (ccu_req_holder.ar.len == 0) begin
+                // single data request
+                logic critical_word_valid;
+                critical_word_valid = (stored_cd_data == ar_addr_offset + 1);
+                ccu_resp_o.r.data   = cd_data[ar_addr_offset];
+                ccu_resp_o.r.last   = critical_word_valid;
+                ccu_resp_o.r_valid  = critical_word_valid;
+            end else begin
+                // cache line request
+                ccu_resp_o.r.data  = cd_data[r_last];
+                ccu_resp_o.r.last  = r_last;
+                ccu_resp_o.r_valid = |stored_cd_data;
+            end
             ccu_resp_o.r.id      = ccu_req_holder.ar.id;
             ccu_resp_o.r.resp[3] = |shared;                // update if shared
             ccu_resp_o.r.resp[2] = |dirty;                 // update if any line dirty
@@ -641,7 +654,7 @@ module ccu_fsm
         r_eot  <= 1'b0;
       end else if (ccu_req_i.r_ready & ccu_resp_o.r_valid) begin
         r_last <= !r_last;
-        if (r_last)
+        if (ccu_resp_o.r.last)
           r_eot <= 1'b1;
       end
     end
