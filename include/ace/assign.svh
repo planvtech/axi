@@ -357,13 +357,14 @@
 // Usage Example:
 // `SNOOP_ASSIGN_MONITOR(mon_dv, snoop_if)
 `define SNOOP_ASSIGN_MONITOR(mon_dv, snoop_if)          \
-  `__SNOOP_TO_AC(assign, mon_dv.ac, _, snoop_if.aw, _)  \
+  `__SNOOP_TO_AC(assign, mon_dv.ac, _, snoop_if.ac, _)  \
   assign mon_dv.ac_valid  = snoop_if.ac_valid;        \
   assign mon_dv.ac_ready  = snoop_if.ac_ready;        \
   `__SNOOP_TO_CD(assign, mon_dv.cd, _, snoop_if.cd, _)     \
   assign mon_dv.cd_valid   = snoop_if.cd_valid;         \
   assign mon_dv.cd_ready   = snoop_if.cd_ready;         \
   `__SNOOP_TO_CR(assign, mon_dv.cr, _, snoop_if.cr, _)     \
+  assign mon_dv.cr_ready   = snoop_if.cr_ready;         \
   assign mon_dv.cr_valid   = snoop_if.cr_valid;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

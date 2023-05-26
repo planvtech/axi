@@ -47,7 +47,7 @@ import cf_math_pkg::idx_width;
   input  slv_req_t    [Cfg.NoSlvPorts-1:0]                              slv_ports_req_i,
   output slv_resp_t   [Cfg.NoSlvPorts-1:0]                              slv_ports_resp_o,
   output snoop_req_t  [Cfg.NoSlvPorts-1:0]                              slv_snp_req_o,
-  input  snoop_resp_t [Cfg.NoSlvPorts-1:0]                              slv_snp_resp_i,                          
+  input  snoop_resp_t [Cfg.NoSlvPorts-1:0]                              slv_snp_resp_i,
   output mst_req_t                                                      mst_ports_req_o,
   input  mst_resp_t                                                     mst_ports_resp_i
 );
@@ -59,12 +59,12 @@ slv_resp_t [Cfg.NoSlvPorts-1:0] [1:0]      slv_resps;
 mst_stg_req_t  [Cfg.NoSlvPorts:0]          mst_reqs;   // one extra port for CCU
 mst_stg_resp_t [Cfg.NoSlvPorts:0]          mst_resps;
 // signals into the CCU
-slv_req_t  [Cfg.NoSlvPorts-1:0]            ccu_reqs_i;   
+slv_req_t  [Cfg.NoSlvPorts-1:0]            ccu_reqs_i;
 slv_resp_t [Cfg.NoSlvPorts-1:0]            ccu_resps_o;
 // signals from the CCU
-mst_stg_req_t                              ccu_reqs_mux_o;   
+mst_stg_req_t                              ccu_reqs_mux_o;
 mst_stg_resp_t                             ccu_resps_mux_i;
-mst_stg_req_t                              ccu_reqs_o;   
+mst_stg_req_t                              ccu_reqs_o;
 mst_stg_resp_t                             ccu_resps_i;
 
 // selection lines for mux and demuxes
@@ -72,11 +72,11 @@ logic [Cfg.NoSlvPorts-1:0]    slv_aw_select, slv_ar_select;
 
 
 for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_slv_port_demux
-    
-    // routing of incoming request through transaction type    
+
+    // routing of incoming request through transaction type
     ace_trs_dec #(
       .slv_ace_req_t  (       slv_req_t        )
-    ) i_ace_trs_dec (   
+    ) i_ace_trs_dec (
       .slv_reqs_i     (   slv_ports_req_i[i]   ),
       .snoop_aw_trs   (   slv_aw_select[i]     ),
       .snoop_ar_trs   (   slv_ar_select[i]     )
@@ -154,13 +154,13 @@ axi_mux #(
 for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_non_shared_conn
     `ACE_ASSIGN_REQ_STRUCT(mst_reqs[i], slv_reqs[i][0])
     `ACE_ASSIGN_RESP_STRUCT(slv_resps[i][0], mst_resps[i])
-end    
+end
 
-// connection reqs and resps for shareable transactions with CCU 
+// connection reqs and resps for shareable transactions with CCU
 for (genvar i = 0; i < Cfg.NoSlvPorts; i++) begin : gen_shared_conn
     `ACE_ASSIGN_REQ_STRUCT(ccu_reqs_i[i], slv_reqs[i][1])
     `ACE_ASSIGN_RESP_STRUCT(slv_resps[i][1], ccu_resps_o[i])
-end  
+end
 
 axi_mux #(
   .SlvAxiIDWidth ( Cfg.AxiIdWidthSlvPorts ), // ID width of the slave ports
@@ -196,15 +196,15 @@ axi_mux #(
 );
 
 
-ccu_fsm  
+ccu_fsm
 #(
-    .NoMstPorts      ( Cfg.NoSlvPorts     ),  
+    .NoMstPorts      ( Cfg.NoSlvPorts     ),
     .mst_req_t       ( mst_stg_req_t      ),
     .mst_resp_t      ( mst_stg_resp_t     ),
     .snoop_req_t     ( snoop_req_t        ),
     .snoop_resp_t    ( snoop_resp_t       )
 
-) fsm (  
+) fsm (
     .clk_i,
     .rst_ni,
     .ccu_req_i       ( ccu_reqs_mux_o     ),
@@ -217,7 +217,7 @@ ccu_fsm
 
 
 
-// connect CCU reqs and resps to mux  
+// connect CCU reqs and resps to mux
 `ACE_ASSIGN_REQ_STRUCT(mst_reqs[Cfg.NoSlvPorts], ccu_reqs_o)
 `ACE_ASSIGN_RESP_STRUCT(ccu_resps_i, mst_resps[Cfg.NoSlvPorts])
 
@@ -237,7 +237,7 @@ import cf_math_pkg::idx_width;
   input  logic                                                      test_i,
   SNOOP_BUS.Slave                                                   snoop_ports [Cfg.NoSlvPorts-1:0],
   ACE_BUS.Slave                                                     slv_ports [Cfg.NoSlvPorts-1:0],
-  AXI_BUS.Master                                                    mst_ports 
+  AXI_BUS.Master                                                    mst_ports
 );
 
   localparam int unsigned AxiIdWidthMstPortsStage = Cfg.AxiIdWidthSlvPorts +$clog2(Cfg.NoSlvPorts);
@@ -252,7 +252,7 @@ import cf_math_pkg::idx_width;
   typedef logic [AXI_USER_WIDTH         -1:0] user_t;
 
     // snoop channel conversion
-  `ACE_TYPEDEF_AW_CHAN_T(mst_ace_stg_aw_chan_t, addr_t, id_mst_stg_t, user_t)  
+  `ACE_TYPEDEF_AW_CHAN_T(mst_ace_stg_aw_chan_t, addr_t, id_mst_stg_t, user_t)
   `ACE_TYPEDEF_AW_CHAN_T(mst_ace_aw_chan_t, addr_t, id_mst_t, user_t)
   `ACE_TYPEDEF_AW_CHAN_T(slv_ace_aw_chan_t, addr_t, id_slv_t, user_t)
   `ACE_TYPEDEF_AR_CHAN_T(mst_ace_stg_ar_chan_t, addr_t, id_mst_stg_t, user_t)
@@ -272,8 +272,8 @@ import cf_math_pkg::idx_width;
   `ACE_TYPEDEF_RESP_T(mst_ace_resp_t, mst_b_chan_t, mst_ace_r_chan_t)
   `ACE_TYPEDEF_RESP_T(slv_ace_resp_t, slv_b_chan_t, slv_ace_r_chan_t)
   `SNOOP_TYPEDEF_AC_CHAN_T(snoop_ac_t, addr_t)
-  `SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, data_t)  
-  `SNOOP_TYPEDEF_CR_CHAN_T(snoop_cr_t)  
+  `SNOOP_TYPEDEF_CD_CHAN_T(snoop_cd_t, data_t)
+  `SNOOP_TYPEDEF_CR_CHAN_T(snoop_cr_t)
   `SNOOP_TYPEDEF_REQ_T(snoop_req_t, snoop_ac_t)
   `SNOOP_TYPEDEF_RESP_T(snoop_resp_t, snoop_cd_t, snoop_cr_t)
 
@@ -285,9 +285,9 @@ import cf_math_pkg::idx_width;
   snoop_req_t       [Cfg.NoSlvPorts-1:0]  snoop_reqs;
   snoop_resp_t      [Cfg.NoSlvPorts-1:0]  snoop_resps;
 
-  
 
-  /// Assigning ACE request from CCU Mux to slave(RAM )  
+
+  /// Assigning ACE request from CCU Mux to slave(RAM )
   `AXI_ASSIGN_FROM_REQ(mst_ports, mst_ace_reqs)
   /// Assigning AXI response from slave (RAM) to CCU mux which accepts only ACE type response
   `ACE_ASSIGN_TO_RESP(mst_ace_resps, mst_ports)
@@ -297,7 +297,7 @@ import cf_math_pkg::idx_width;
 
     `ACE_ASSIGN_TO_REQ(slv_ace_reqs[i], slv_ports[i])
     `ACE_ASSIGN_FROM_RESP(slv_ports[i], slv_ace_resps[i])
-    /// Assigning SNOOP request from CCU logic to master 
+    /// Assigning SNOOP request from CCU logic to master
     `SNOOP_ASSIGN_FROM_REQ(snoop_ports[i], snoop_reqs[i])
     /// Assigning SNOOP response from master to CCU logic
     `SNOOP_ASSIGN_TO_RESP(snoop_resps[i], snoop_ports[i])
@@ -338,6 +338,6 @@ import cf_math_pkg::idx_width;
     .slv_snp_resp_i     ( snoop_resps           ),
     .mst_ports_req_o    ( mst_ace_reqs          ),
     .mst_ports_resp_i   ( mst_ace_resps         )
-  );  
- 
-endmodule         
+  );
+
+endmodule
