@@ -449,8 +449,8 @@ module ccu_fsm
 
         SEND_INVALID_W:begin
             for (int unsigned n = 0; n < NoMstPorts; n = n + 1) begin
-                s2m_req_o[n].ac.addr  = ccu_req_holder.ar.addr; // <----- Should use ccu_req_holder.aw?
-                s2m_req_o[n].ac.prot  = ccu_req_holder.ar.prot; // <----- Should use ccu_req_holder.aw?
+                s2m_req_o[n].ac.addr  = ccu_req_holder.aw.addr; // <----- Should use ccu_req_holder.aw?
+                s2m_req_o[n].ac.prot  = ccu_req_holder.aw.prot; // <----- Should use ccu_req_holder.aw?
                 s2m_req_o[n].ac.snoop = 'b1001;
                 s2m_req_o[n].ac_valid = !ac_ready[n];
             end

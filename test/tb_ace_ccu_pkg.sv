@@ -64,6 +64,8 @@ package tb_ace_ccu_pkg;
       .ID_WIDTH ( AxiIdWidthSlaves )
     ) slave_exp_queue_t;
 
+
+
     //-----------------------------------------
     // Monitoring virtual interfaces
     //-----------------------------------------
@@ -87,7 +89,13 @@ package tb_ace_ccu_pkg;
     // Queues and FIFOs to hold the expected ids
     //-----------------------------------------
     // Write transactions
-    ax_queue_t         exp_aw_queue [NoSlaves-1:0];
+    ax_queue_t              exp_aw_queue [NoSlaves-1:0];
+    exp_ax_t                write_back_queue_ax[NoMasters-1:0][$];
+    snoop_pkg::acsnoop_t    acsnoop_hold[NoMasters-1:0];
+    logic  [63:0]           ac_address_holder[NoMasters-1:0];  
+    logic                   WB_Queue_Reset;   
+
+
     slave_exp_t        exp_w_fifo   [NoSlaves-1:0][$];
     slave_exp_t        act_w_fifo   [NoSlaves-1:0][$];
     master_exp_queue_t exp_b_queue  [NoMasters-1:0];
@@ -95,6 +103,9 @@ package tb_ace_ccu_pkg;
     // Read transactions
     ax_queue_t            exp_ar_queue  [NoSlaves-1:0];
     master_exp_queue_t    exp_r_queue  [NoMasters-1:0];
+
+    // clean Inavalid log file
+    int FDCI;
 
     //-----------------------------------------
     // Bookkeeping
@@ -141,6 +152,7 @@ package tb_ace_ccu_pkg;
           this.exp_ar_queue[i] = new;
         end
         this.cnt_sem = new(1);
+        this.WB_Queue_Reset   = 'b0;
       end
     endfunction
 
@@ -179,6 +191,16 @@ package tb_ace_ccu_pkg;
       master_exp_t exp_b;
 
       if (masters_axi[i].aw_valid && masters_axi[i].aw_ready) begin
+
+        // check whether transaction is snoop type or not
+        logic write_back     =   (masters_axi[i].aw_snoop == 'b011) && (masters_axi[i].aw_bar[0] == 'b0) &&
+                          ((masters_axi[i].aw_domain == 'b00) || (masters_axi[i].aw_domain == 'b01) ||
+                          (masters_axi[i].aw_domain == 'b10));
+
+        logic write_no_snoop =   (masters_axi[i].aw_snoop == 'b000) && (masters_axi[i].aw_bar[0] == 'b0) &&
+                        ((masters_axi[i].aw_domain == 'b00) || (masters_axi[i].aw_domain == 'b11) );
+        logic snoop_aw_trs = ~(write_back | write_no_snoop);  
+
         to_slave_idx = '0;
         decerr = 1'b0;
         // send the exp aw beat down into the queue of the slave when no decerror
@@ -188,6 +210,17 @@ package tb_ace_ccu_pkg;
                    slv_axi_addr: masters_axi[i].aw_addr,
                    slv_axi_len:  masters_axi[i].aw_len   };
         this.exp_aw_queue[to_slave_idx].push(exp_aw_id, exp_aw);
+        
+        // push in write back queue in case of snoop transaction type
+        if(snoop_aw_trs == 'b1) begin
+          $fdisplay(FDCI, "%0tns > WRITE CLEAN INVALID initiated AXI ID: %b, Address: %h",
+          $time, exp_aw.slv_axi_id, exp_aw.slv_axi_addr);
+          for(int j = 0; j < NoMasters; j++) begin
+            this.write_back_queue_ax[j].push_back( exp_aw); 
+          end
+        end
+        
+
         incr_expected_tests(3);
         $display("%0tns > Master %0d: AW to Slave %0d: Axi ID: %b %x",
                  $time, i, to_slave_idx, masters_axi[i].aw_id, masters_axi[i].aw_len);
@@ -328,6 +361,8 @@ package tb_ace_ccu_pkg;
       slv_axi_id_t   exp_slv_axi_id;
       exp_ax_t       exp_slv_ar;
       master_exp_t   exp_mst_r;
+      master_exp_t   exp_b;
+      slv_axi_id_t exp_aw_id;
 
       logic          exp_decerr;
 
@@ -350,7 +385,19 @@ package tb_ace_ccu_pkg;
         incr_expected_tests(1);
         // push the required r beats into the right fifo
         if (isCleanUnique(masters_axi[i].ar_snoop, masters_axi[i].ar_bar, masters_axi[i].ar_domain)) begin
+          
+          for (int j = 0; j < NoMasters; j++)
+            this.write_back_queue_ax[j].push_back( exp_slv_ar);
+          $fdisplay(FDCI, "%0tns > READ CLEAN INVALID initiated AXI ID: %b, Address: %h",
+           $time, exp_slv_ar.slv_axi_id, exp_slv_ar.slv_axi_addr);
+
           exp_len = 0;
+           // populate the expected b queue anyway
+          exp_b = '{mst_axi_id: masters_axi[i].ar_id, last: 1'b1};
+          this.exp_b_queue[i].push(masters_axi[i].ar_id, exp_b);
+        
+          incr_expected_tests(1);
+          $display("        Expect B response.");
         end else begin
           exp_len = mst_axi_len;
         end
@@ -423,27 +470,66 @@ package tb_ace_ccu_pkg;
       if (slaves_snoop[i].ac_valid && slaves_snoop[i].ac_ready) begin
         $display("%0tns > SNOOP %0d: AC_SNOOP %b: ",
               $time, i, slaves_snoop[i].ac_snoop);
-        if(slaves_snoop[i].ac_snoop == snoop_pkg::CLEAN_INVALID && i == (NoMasters-1))
-          incr_conducted_tests(1); 
+        ac_address_holder[i] = slaves_snoop[i].ac_addr;
+        acsnoop_hold[i]      = slaves_snoop[i].ac_snoop;      
+      end
+      if(slaves_snoop[i].ac_snoop == snoop_pkg::CLEAN_INVALID && i == (NoMasters-1)) begin  
+        incr_expected_tests(1); 
+        // empty the write back queue of initiator
+        cnt_sem.get();
+          for (int j = 0; j < NoMasters; j++) begin
+            if(!slaves_snoop[j].ac_valid && !WB_Queue_Reset) begin
+              this.write_back_queue_ax[j].pop_front();
+              WB_Queue_Reset  = 'b1;
+            end
+          end
+        cnt_sem.put();  
+
       end
     endtask:monitor_snoop_ac
 
     // This task monitors the CR channel on snoop slave. It captures outgoing snoop response
     task automatic monitor_snoop_cr(input int unsigned i);
+      exp_ax_t      exp_aw;
+      exp_ax_t      exp_aw_swap;
+      master_exp_t  exp_b;
       if (slaves_snoop[i].cr_valid && slaves_snoop[i].cr_ready) begin
+        WB_Queue_Reset  = 'b0;
         $display("%0tns > Got Response from SNOOP %0d: CR_RESP %b: ",
-              $time, i, slaves_snoop[i].cr_resp);
-        if(slaves_snoop[i].cr_resp[0] && !slaves_snoop[i].cr_resp[1])
-          incr_expected_tests(1);
-      end
+              $time, i, slaves_snoop[i].cr_resp);      
+        if(slaves_snoop[i].cr_resp[0] && !slaves_snoop[i].cr_resp[1] && !slaves_snoop[i].cr_resp[2]) begin
+          incr_conducted_tests(1);
+        end
+        else if(acsnoop_hold[i] === snoop_pkg::CLEAN_INVALID) begin
+          if(slaves_snoop[i].cr_resp[0] && !slaves_snoop[i].cr_resp[1] && slaves_snoop[i].cr_resp[2]) begin
+            // extract write back transaction from WB queues that will pushed into the expected AW queue
+            exp_aw      = this.write_back_queue_ax[i].pop_front();
+            exp_aw_swap = this.exp_aw_queue[0].pop_id(exp_aw.slv_axi_id);
+            this.exp_aw_queue[0].push(exp_aw.slv_axi_id, exp_aw);
+            this.exp_aw_queue[0].push(exp_aw.slv_axi_id, exp_aw_swap);
+            $fdisplay(FDCI,"%0tns > Write back occured", $time);
+            $fdisplay(FDCI, "\t \t AXI ID: %b, Address: %h", exp_aw.slv_axi_id, exp_aw.slv_axi_addr);
+            $fdisplay(FDCI, "\t \t AC Address: %h", ac_address_holder[i]);
+            incr_conducted_tests(3);
+          end 
+          else begin
+              // extract write back transaction from WB queues that will not be processed
+              exp_aw = this.write_back_queue_ax[i].pop_front();
+              $fdisplay(FDCI,"%0tns > Write back Discarded by cache%d", $time, i);
+              $fdisplay(FDCI, "\t \t AXI ID: %b, Address: %h", exp_aw.slv_axi_id, exp_aw.slv_axi_addr);
+              $fdisplay(FDCI, "\t \t AC Address: %h", ac_address_holder[i]);
+              incr_conducted_tests(1);
+          end
+        end
+    end
     endtask:monitor_snoop_cr
 
     // This task monitors the CD channel on snoop slave. It captures outgoing snoop data,
     task automatic monitor_snoop_cd(input int unsigned i);
       if (slaves_snoop[i].cd_valid && slaves_snoop[i].cd_ready) begin
         $display("%0tns > Got Data from SNOOP %0d: with last flag %b: ",
-              $time, i, slaves_snoop[i].cd_last);
-          incr_conducted_tests(slaves_snoop[i].cd_last);      
+              $time, i, slaves_snoop[i].cd_last);    
+              incr_conducted_tests(1);
       end
     endtask:monitor_snoop_cd
 
@@ -472,6 +558,14 @@ package tb_ace_ccu_pkg;
     // For the tasks every clock cycle all processes that only push something in the fifo's and
     // Queues get run. When they are finished the processes that pop something get run.
     task run();
+
+      // Log file for  Write back transactions
+      FDCI = $fopen("CleanInvalid.log", "w");
+      if(FDCI)
+        $display("Clean inavlid log file created ");
+      else
+        $fatal("Clean inavlid log file Failed"); 
+
       Continous: fork
         begin
           do begin
