@@ -282,7 +282,7 @@ package tb_ace_ccu_pkg;
         if (exp_aw.slv_axi_len != slaves_axi[i].aw_len) begin
           incr_failed_tests(1);
           $warning("Slave %0d: Unexpected AW with ID: %b and LEN: %h, exp: %h %b",
-                   i, slaves_axi[i].aw_id, slaves_axi[i].aw_len, exp_aw.slv_axi_len, exp_aw.slv_axi_id);
+                   i, slaves_axi[i].aw_id, slaves_axi[i].aw_len, exp_aw.slv_axi_len, exp_aw_id);
         end
         incr_conducted_tests(3);
 
