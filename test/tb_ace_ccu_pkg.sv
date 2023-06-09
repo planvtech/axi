@@ -213,7 +213,9 @@ package tb_ace_ccu_pkg;
         
         // push in write back queue in case of snoop transaction type
         if(snoop_aw_trs == 'b1) begin
-          exp_aw.slv_axi_len = 1;
+          // writeback is always full cache line
+          exp_aw.slv_axi_len       = 1;
+          exp_aw.slv_axi_addr[3:0] = 4'b0;
           $fdisplay(FDCI, "%0tns > WRITE CLEAN INVALID initiated AXI ID: %b, Address: %h",
           $time, exp_aw.slv_axi_id, exp_aw.slv_axi_addr);
           for(int j = 0; j < NoMasters; j++) begin
@@ -386,7 +388,9 @@ package tb_ace_ccu_pkg;
         incr_expected_tests(1);
         // push the required r beats into the right fifo
         if (isCleanUnique(masters_axi[i].ar_snoop, masters_axi[i].ar_bar, masters_axi[i].ar_domain)) begin
-         exp_slv_ar.slv_axi_len = 1;
+         // writeback is always complete cache line
+         exp_slv_ar.slv_axi_len       = 1;
+         exp_slv_ar.slv_axi_addr[3:0] = 4'b0;
           for (int j = 0; j < NoMasters; j++)
             this.write_back_queue_ax[j].push_back( exp_slv_ar);
           $fdisplay(FDCI, "%0tns > READ CLEAN INVALID initiated AXI ID: %b, Address: %h",
@@ -396,7 +400,7 @@ package tb_ace_ccu_pkg;
            // populate the expected b queue anyway
           exp_b = '{mst_axi_id: masters_axi[i].ar_id, last: 1'b1};
           this.exp_b_queue[i].push(masters_axi[i].ar_id, exp_b);
-        
+
           incr_expected_tests(1);
           $display("        Expect B response.");
         end else begin

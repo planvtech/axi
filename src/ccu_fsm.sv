@@ -35,7 +35,7 @@ module ccu_fsm
       WAIT_RESP_R,               // 8
       READ_SNP_DATA,             // 9
       SEND_AXI_REQ_R,            // 10
-      READ_MEM,                  // 11                       
+      READ_MEM,                  // 11
       DECODE_W,                  // 12
       SEND_INVALID_W,            // 13
       WAIT_INVALID_W,            // 14
@@ -392,17 +392,17 @@ module ccu_fsm
 
         SEND_AXI_REQ_WRITE_BACK_R: begin
             // send writeback request
-            ccu_req_o.aw_valid  = 'b1;
-
-            ccu_req_o.aw        = '0; //default
-            ccu_req_o.aw.addr   = ccu_req_holder.ar.addr;
-            ccu_req_o.aw.size   = 2'b11;
-            ccu_req_o.aw.burst  = axi_pkg::BURST_INCR; // Use BURST_INCR for AXI regular transaction
-            ccu_req_o.aw.id     = ccu_req_holder.ar.id;
-            ccu_req_o.aw.len    = BURST_SIZE; // number of bursts to do
+            ccu_req_o.aw_valid     = 'b1;
+            ccu_req_o.aw           = '0; //default
+            ccu_req_o.aw.addr      = ccu_req_holder.ar.addr;
+            ccu_req_o.aw.addr[3:0] = 4'b0; // writeback is always full cache line
+            ccu_req_o.aw.size      = 2'b11;
+            ccu_req_o.aw.burst     = axi_pkg::BURST_INCR; // Use BURST_INCR for AXI regular transaction
+            ccu_req_o.aw.id        = ccu_req_holder.ar.id;
+            ccu_req_o.aw.len       = BURST_SIZE; // number of bursts to do
             // WRITEBACK
-            ccu_req_o.aw.domain = 2'b00;
-            ccu_req_o.aw.snoop  = 3'b011;
+            ccu_req_o.aw.domain    = 2'b00;
+            ccu_req_o.aw.snoop     = 3'b011;
         end
 
         WRITE_BACK_MEM_R: begin
@@ -458,17 +458,17 @@ module ccu_fsm
 
         SEND_AXI_REQ_WRITE_BACK_W: begin
             // send writeback request
-            ccu_req_o.aw_valid  = 'b1;
-
-            ccu_req_o.aw        = '0; //default
-            ccu_req_o.aw.addr   = ccu_req_holder.aw.addr;
-            ccu_req_o.aw.size   = 2'b11;
-            ccu_req_o.aw.burst  = axi_pkg::BURST_INCR; // Use BURST_INCR for AXI regular transaction
-            ccu_req_o.aw.id     = ccu_req_holder.aw.id;
-            ccu_req_o.aw.len    = BURST_SIZE; // number of bursts to do
+            ccu_req_o.aw_valid     = 'b1;
+            ccu_req_o.aw           = '0; //default
+            ccu_req_o.aw.addr      = ccu_req_holder.aw.addr;
+            ccu_req_o.aw.addr[3:0] = 4'b0; // writeback is always full cache line
+            ccu_req_o.aw.size      = 2'b11;
+            ccu_req_o.aw.burst     = axi_pkg::BURST_INCR; // Use BURST_INCR for AXI regular transaction
+            ccu_req_o.aw.id        = ccu_req_holder.aw.id;
+            ccu_req_o.aw.len       = BURST_SIZE; // number of bursts to do
             // WRITEBACK
-            ccu_req_o.aw.domain = 2'b00;
-            ccu_req_o.aw.snoop  = 3'b011;
+            ccu_req_o.aw.domain    = 2'b00;
+            ccu_req_o.aw.snoop     = 3'b011;
         end
 
         WRITE_BACK_MEM_W: begin
