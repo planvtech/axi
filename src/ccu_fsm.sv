@@ -3,11 +3,11 @@
 
 module ccu_fsm
 #(
-    parameter int  NoMstPorts           = 4,
-    parameter type mst_req_t            = logic,
-    parameter type mst_resp_t           = logic,
-    parameter type snoop_req_t          = logic,
-    parameter type snoop_resp_t         = logic
+    parameter int  NoMstPorts   = 4,
+    parameter type mst_req_t    = logic,
+    parameter type mst_resp_t   = logic,
+    parameter type snoop_req_t  = logic,
+    parameter type snoop_resp_t = logic
 ) (
     //clock and reset
     input                               clk_i,
@@ -23,23 +23,29 @@ module ccu_fsm
     input  snoop_resp_t [NoMstPorts-1:0] m2s_resp_i
 );
 
-    enum logic [4:0] {  IDLE,           //0
-                        DECODE_R,       //1
-                        SEND_INVALID_R, //2
-                        SEND_READ,      //3
-                        WAIT_RESP_R,    //4
-                        READ_SNP_DATA,  //5
-                        SEND_AXI_REQ_R, //6
-                        READ_MEM,       //7
-                        WAIT_INVALID_R, //8
-                        SEND_ACK_I_R,   //9
-                        DECODE_W,       //10
-                        SEND_INVALID_W, //11
-                        WAIT_RESP_W,    //12
-                        SEND_AXI_REQ_W, //13
-                        WRITE_MEM       //14
+    enum logic [5:0] { 
+      IDLE,                      // 0
+      DECODE_R,                  // 1
+      SEND_INVALID_R,            // 2
+      WAIT_INVALID_R,            // 3
+      SEND_AXI_REQ_WRITE_BACK_R, // 4
+      WRITE_BACK_MEM_R,          // 5
+      SEND_ACK_I_R,              // 6
+      SEND_READ,                 // 7
+      WAIT_RESP_R,               // 8
+      READ_SNP_DATA,             // 9
+      SEND_AXI_REQ_R,            // 10
+      READ_MEM,                  // 11
+      DECODE_W,                  // 12
+      SEND_INVALID_W,            // 13
+      WAIT_INVALID_W,            // 14
+      SEND_AXI_REQ_WRITE_BACK_W, // 15
+      WRITE_BACK_MEM_W,          // 16
+      SEND_AXI_REQ_W,            // 17
+      WRITE_MEM                  // 18
+    } state_d, state_q;
 
-                    } state_d, state_q;
+    localparam BURST_SIZE = 2-1; //ariane_pkg::DCACHE_LINE_WIDTH/riscv::XLEN-1;
 
     // snoop resoponse valid
     logic [NoMstPorts-1:0]          cr_valid;
@@ -73,7 +79,9 @@ module ccu_fsm
   logic [1:0][$size(ccu_resp_o.r.data)-1:0]               cd_data;
   logic [1:0]               stored_cd_data;
   logic                                                    r_last;
-  logic                                                    eot;
+  logic                                                    w_last;
+  logic                                                    r_eot;
+  logic                                                    w_eot;
   typedef struct packed {
     logic        waiting_w;
     logic        waiting_r;
@@ -152,6 +160,34 @@ module ccu_fsm
             // wait for all snoop masters to assert CR valid
             if (cr_valid != '1) begin
                 state_d = WAIT_INVALID_R;
+            end else if(|(data_available & ~response_error)) begin
+                state_d = SEND_AXI_REQ_WRITE_BACK_R;
+            end else begin
+                state_d = SEND_ACK_I_R;
+            end
+        end
+
+        SEND_AXI_REQ_WRITE_BACK_R: begin
+            // wait for responding slave to assert aw_ready
+            if(ccu_resp_i.aw_ready !='b1) begin
+                state_d = SEND_AXI_REQ_WRITE_BACK_R;
+            end else begin
+                state_d = WRITE_BACK_MEM_R;
+            end
+        end
+
+        WRITE_BACK_MEM_R: begin
+            // wait for responding slave to send b_valid
+            if((ccu_resp_i.b_valid && ccu_req_o.b_ready)) begin
+                state_d = SEND_ACK_I_R;
+            end else begin
+                state_d = WRITE_BACK_MEM_R;
+            end
+        end
+
+        SEND_ACK_I_R: begin
+            if( ccu_req_i.r_ready ) begin
+                state_d = IDLE;
             end else begin
                 state_d = SEND_ACK_I_R;
             end
@@ -178,7 +214,7 @@ module ccu_fsm
         end
 
         READ_SNP_DATA: begin
-          if(cd_last == data_available && (eot == 1'b1 || (ccu_req_i.r_ready == 1'b1 && r_last == 1'b1))) begin
+          if(cd_last == data_available && (r_eot == 1'b1 || (ccu_req_i.r_ready == 1'b1 && r_last == 1'b1))) begin
             state_d = IDLE;
           end else begin
             state_d = READ_SNP_DATA;
@@ -207,13 +243,6 @@ module ccu_fsm
             end
         end
 
-        SEND_ACK_I_R: begin
-            if( ccu_req_i.r_ready ) begin
-                state_d = IDLE;
-            end else begin
-                state_d = SEND_ACK_I_R;
-            end
-        end
 
         //---------------------
         //---- Write Branch ---
@@ -228,16 +257,36 @@ module ccu_fsm
             if (ac_ready != '1) begin
                 state_d = SEND_INVALID_W;
             end else begin
-                state_d = WAIT_RESP_W;
+                state_d = WAIT_INVALID_W;
             end
         end
 
-        WAIT_RESP_W: begin
+        WAIT_INVALID_W: begin
             // wait for all snoop masters to assert CR valid
             if (cr_valid != '1) begin
-                state_d = WAIT_RESP_W;
+                state_d = WAIT_INVALID_W;
+            end else if(|(data_available & ~response_error)) begin
+                state_d = SEND_AXI_REQ_WRITE_BACK_W;
             end else begin
                 state_d = SEND_AXI_REQ_W;
+            end
+        end
+
+        SEND_AXI_REQ_WRITE_BACK_W: begin
+            // wait for responding slave to assert aw_ready
+            if(ccu_resp_i.aw_ready !='b1) begin
+                state_d = SEND_AXI_REQ_WRITE_BACK_W;
+            end else begin
+                state_d = WRITE_BACK_MEM_W;
+            end
+        end
+
+        WRITE_BACK_MEM_W: begin
+            // wait for responding slave to send b_valid
+            if((ccu_resp_i.b_valid && ccu_req_o.b_ready)) begin
+                state_d = SEND_AXI_REQ_W;
+            end else begin
+                state_d = WRITE_BACK_MEM_W;
             end
         end
 
@@ -278,9 +327,9 @@ module ccu_fsm
         ar_addr_offset = ccu_req_holder.ar.addr[3];
 
         // Default Assignments
-        ccu_req_o           =   '0;
-        ccu_resp_o          =   '0;
-        s2m_req_o           =   '0;
+        ccu_req_o  = '0;
+        ccu_resp_o = '0;
+        s2m_req_o  = '0;
 
         case(state_q)
         IDLE: begin
@@ -312,7 +361,7 @@ module ccu_fsm
             end
         end
 
-        WAIT_RESP_R, WAIT_RESP_W, WAIT_INVALID_R: begin
+        WAIT_RESP_R, WAIT_INVALID_W, WAIT_INVALID_R: begin
             for (int unsigned n = 0; n < NoMstPorts; n = n + 1)
               s2m_req_o[n].cr_ready  =   !cr_valid[n]; //'b1;
         end
@@ -321,7 +370,7 @@ module ccu_fsm
           for (int unsigned n = 0; n < NoMstPorts; n = n + 1)
             s2m_req_o[n].cd_ready  = !cd_last[n] & data_available[n];
           // response to intiating master
-          if (!eot) begin
+          if (!r_eot) begin
             if (ccu_req_holder.ar.len == 0) begin
                 // single data request
                 logic critical_word_valid;
@@ -338,6 +387,34 @@ module ccu_fsm
             ccu_resp_o.r.id      = ccu_req_holder.ar.id;
             ccu_resp_o.r.resp[3] = |shared;                // update if shared
             ccu_resp_o.r.resp[2] = |dirty;                 // update if any line dirty
+          end
+        end
+
+        SEND_AXI_REQ_WRITE_BACK_R: begin
+            // send writeback request
+            ccu_req_o.aw_valid     = 'b1;
+            ccu_req_o.aw           = '0; //default
+            ccu_req_o.aw.addr      = ccu_req_holder.ar.addr;
+            ccu_req_o.aw.addr[3:0] = 4'b0; // writeback is always full cache line
+            ccu_req_o.aw.size      = 2'b11;
+            ccu_req_o.aw.burst     = axi_pkg::BURST_INCR; // Use BURST_INCR for AXI regular transaction
+            ccu_req_o.aw.id        = ccu_req_holder.ar.id;
+            ccu_req_o.aw.len       = BURST_SIZE; // number of bursts to do
+            // WRITEBACK
+            ccu_req_o.aw.domain    = 2'b00;
+            ccu_req_o.aw.snoop     = 3'b011;
+        end
+
+        WRITE_BACK_MEM_R: begin
+          for (int unsigned n = 0; n < NoMstPorts; n = n + 1)
+            s2m_req_o[n].cd_ready  = !cd_last[n] & data_available[n];
+          // response to intiating master
+          if (!r_eot) begin
+            ccu_req_o.w_valid =  |stored_cd_data;
+            ccu_req_o.w.strb  =  '1;
+            ccu_req_o.w.data  =   cd_data[w_last];
+            ccu_req_o.w.last  =   w_last;
+            ccu_req_o.b_ready = 'b1;
           end
         end
 
@@ -372,11 +449,39 @@ module ccu_fsm
 
         SEND_INVALID_W:begin
             for (int unsigned n = 0; n < NoMstPorts; n = n + 1) begin
-                s2m_req_o[n].ac.addr   =   ccu_req_holder.ar.addr;
-                s2m_req_o[n].ac.prot   =   ccu_req_holder.ar.prot;
-                s2m_req_o[n].ac.snoop  =   'b1001;
-                s2m_req_o[n].ac_valid  =   !ac_ready[n];
+                s2m_req_o[n].ac.addr  = ccu_req_holder.aw.addr; // <----- Should use ccu_req_holder.aw?
+                s2m_req_o[n].ac.prot  = ccu_req_holder.aw.prot; // <----- Should use ccu_req_holder.aw?
+                s2m_req_o[n].ac.snoop = 'b1001;
+                s2m_req_o[n].ac_valid = !ac_ready[n];
             end
+        end
+
+        SEND_AXI_REQ_WRITE_BACK_W: begin
+            // send writeback request
+            ccu_req_o.aw_valid     = 'b1;
+            ccu_req_o.aw           = '0; //default
+            ccu_req_o.aw.addr      = ccu_req_holder.aw.addr;
+            ccu_req_o.aw.addr[3:0] = 4'b0; // writeback is always full cache line
+            ccu_req_o.aw.size      = 2'b11;
+            ccu_req_o.aw.burst     = axi_pkg::BURST_INCR; // Use BURST_INCR for AXI regular transaction
+            ccu_req_o.aw.id        = ccu_req_holder.aw.id;
+            ccu_req_o.aw.len       = BURST_SIZE; // number of bursts to do
+            // WRITEBACK
+            ccu_req_o.aw.domain    = 2'b00;
+            ccu_req_o.aw.snoop     = 3'b011;
+        end
+
+        WRITE_BACK_MEM_W: begin
+          for (int unsigned n = 0; n < NoMstPorts; n = n + 1)
+            s2m_req_o[n].cd_ready  = !cd_last[n] & data_available[n];
+          // response to intiating master
+          if (!r_eot) begin
+            ccu_req_o.w_valid =  |stored_cd_data;
+            ccu_req_o.w.strb  =  '1;
+            ccu_req_o.w.data  =   cd_data[w_last];
+            ccu_req_o.w.last  =   w_last;
+            ccu_req_o.b_ready = 'b1;
+          end
         end
 
         SEND_AXI_REQ_W: begin
@@ -393,8 +498,8 @@ module ccu_fsm
             ccu_resp_o.b        =  ccu_resp_i.b;
             ccu_resp_o.b_valid  =  ccu_resp_i.b_valid;
             ccu_resp_o.w_ready  =  ccu_resp_i.w_ready;
-
         end
+
         endcase
     end // end output block
 
@@ -497,24 +602,43 @@ module ccu_fsm
         end
         else begin
           for (int i = 0; i < NoMstPorts; i = i + 1) begin
-            if(state_q == READ_SNP_DATA && m2s_resp_i[i].cd_valid) begin
-              data_received[i]    <= m2s_resp_i[i].cd_valid;
-              cd_last[i]          <= cd_last[i] | (m2s_resp_i[i].cd.last & data_available[i]);
-              m2s_resp_holder[i]  <= m2s_resp_i[i];
-            end
-            if (data_received[i] & ccu_resp_o.r_valid) begin
-              data_received[i] <= '0;
-              m2s_resp_holder  <= '0;
-            end
-          end
-          if(state_q == READ_SNP_DATA) begin
-            if (m2s_resp_i[first_responder].cd_valid & s2m_req_o[first_responder].cd_ready) begin
-              cd_data[m2s_resp_i[first_responder].cd.last] <= m2s_resp_i[first_responder].cd.data;
-            end
-            if (s2m_req_o[first_responder].cd_ready & m2s_resp_i[first_responder].cd_valid & !(ccu_resp_o.r_valid & ccu_req_i.r_ready))
+            if (state_q == READ_SNP_DATA) begin
+              if(m2s_resp_i[i].cd_valid) begin
+                data_received[i]    <= m2s_resp_i[i].cd_valid;
+                cd_last[i]          <= cd_last[i] | (m2s_resp_i[i].cd.last & data_available[i]);
+                m2s_resp_holder[i]  <= m2s_resp_i[i];
+              end
+              if (data_received[i] & ccu_resp_o.r_valid) begin
+                data_received[i] <= '0;
+                m2s_resp_holder  <= '0;
+              end
+              if (m2s_resp_i[first_responder].cd_valid & s2m_req_o[first_responder].cd_ready) begin
+                cd_data[m2s_resp_i[first_responder].cd.last] <= m2s_resp_i[first_responder].cd.data;
+              end
+              if (s2m_req_o[first_responder].cd_ready & m2s_resp_i[first_responder].cd_valid & !(ccu_resp_o.r_valid & ccu_req_i.r_ready)) begin
                 stored_cd_data <= stored_cd_data + 1;
-            else if(ccu_resp_o.r_valid & ccu_req_i.r_ready & !(s2m_req_o[first_responder].cd_ready & m2s_resp_i[first_responder].cd_valid))
-              stored_cd_data <= stored_cd_data - 1;
+              end else if(ccu_resp_o.r_valid & ccu_req_i.r_ready & !(s2m_req_o[first_responder].cd_ready & m2s_resp_i[first_responder].cd_valid)) begin
+                stored_cd_data <= stored_cd_data - 1;
+              end
+            end else if (state_q == WRITE_BACK_MEM_R || state_q == WRITE_BACK_MEM_W) begin
+              if(m2s_resp_i[i].cd_valid) begin
+                data_received[i]    <= m2s_resp_i[i].cd_valid;
+                cd_last[i]          <= cd_last[i] | (m2s_resp_i[i].cd.last & data_available[i]);
+                m2s_resp_holder[i]  <= m2s_resp_i[i];
+              end
+              if (data_received[i] & ccu_req_o.w_valid) begin
+                data_received[i] <= '0;
+                m2s_resp_holder  <= '0;
+              end
+              if (m2s_resp_i[first_responder].cd_valid & s2m_req_o[first_responder].cd_ready) begin
+                cd_data[m2s_resp_i[first_responder].cd.last] <= m2s_resp_i[first_responder].cd.data;
+              end
+              if (s2m_req_o[first_responder].cd_ready & m2s_resp_i[first_responder].cd_valid & !(ccu_req_o.w_valid & ccu_resp_i.w_ready)) begin
+                stored_cd_data <= stored_cd_data + 1;
+              end else if(ccu_req_o.w_valid & ccu_resp_i.w_ready & !(s2m_req_o[first_responder].cd_ready & m2s_resp_i[first_responder].cd_valid)) begin
+                stored_cd_data <= stored_cd_data - 1;
+              end
+            end
           end
         end
       end
@@ -522,16 +646,32 @@ module ccu_fsm
 
   always_ff @ (posedge clk_i, negedge rst_ni) begin
     if(!rst_ni) begin
-      r_last          <= 1'b0;
-      eot <= 1'b0;
+      r_last <= 1'b0;
+      r_eot  <= 1'b0;
     end else begin
       if(state_q == IDLE) begin
-        r_last          <= 1'b0;
-        eot <= 1'b0;
+        r_last <= 1'b0;
+        r_eot  <= 1'b0;
       end else if (ccu_req_i.r_ready & ccu_resp_o.r_valid) begin
         r_last <= !r_last;
         if (ccu_resp_o.r.last)
-          eot <= 1'b1;
+          r_eot <= 1'b1;
+      end
+    end
+  end
+
+  always_ff @ (posedge clk_i, negedge rst_ni) begin
+    if(!rst_ni) begin
+      w_last <= 1'b0;
+      w_eot  <= 1'b0;
+    end else begin
+      if(state_q == IDLE) begin
+        w_last <= 1'b0;
+        w_eot  <= 1'b0;
+      end else if (ccu_resp_i.w_ready & ccu_req_o.w_valid) begin
+        w_last <= !w_last;
+        if (w_last)
+          w_eot <= 1'b1;
       end
     end
   end
