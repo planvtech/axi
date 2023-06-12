@@ -211,6 +211,21 @@ exec_test() {
                 done
             done
             ;;
+        ace_ccu_top_sanity)
+            for NumMst in 2; do
+                for NumSlv in  1; do
+                    for Atop in 0; do
+                        for Exclusive in 0; do
+                            for UniqueIds in 0; do
+                                call_vsim tb_ace_ccu_top -gTbNumMst=$NumMst -gTbNumSlv=$NumSlv \
+                                        -gTbEnAtop=$Atop -gTbEnExcl=$Exclusive \
+                                        -gTbUniqueIds=$UniqueIds
+                            done
+                        done
+                    done
+                done
+            done
+            ;;
         axi_to_mem_banked)
             for MEM_LAT in 1 2; do
                 for BANK_FACTOR in 1 2; do
