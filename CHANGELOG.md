@@ -8,10 +8,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 
 ### Added
-- Add `axi_channel_compare.sv`: Non-synthesizable module comparing two AXI channels of the same type
+- Add `axi_chan_compare.sv`: Non-synthesizable module comparing two AXI channels of the same type
 - Add `axi_bus_compare` and `axi_slave_compare`; two synthesizable verification IPs meant to be used
   to compare two AXI buses on an FPGA.
 - Add `axi_lite_from_mem` and `axi_from_mem` acting like SRAMs making AXI4 requests downstream.
+- Add `axi_rw_join` and `axi_rw_split` to split/join AXI buses.
+- Add `#_width` functions returning the width of the AXI channels.
+- Add `axi_lite_dw_converter`: Convert the data width of AXI4-Lite transactions. Emmits the
+  appropriate amount of downstream transactions to perform the whole requested access.
+
 
 ### Changed
 - `axi_demux`: Replace FIFO between AW and W channel by a register plus a counter.  This prevents
@@ -20,6 +25,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `axi_xbar`: Add parameter `PipelineStages` to `axi_pkg::xbar_cfg_t`.  This adds `axi_multicuts`
   in the crossed connections in the xbar between the demuxes and muxes.
 - `axi_pkg`: Add documentation to `xbar_cfg_t`.
+- Move `mem_to_banks` to `common_cells`.
+- Update `common_cells` from version `v1.26.0` to `v1.27.0`.
+- `axi_pkg`: Define `localparams` to define AXI type widths.
+- `axi_test:axi_rand_lite_slave`: R response field is now random.
 
 ### Fixed
 
