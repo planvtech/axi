@@ -17,7 +17,7 @@ package:
     - "Florian Zaruba <zarubaf@iis.ee.ethz.ch>"
 
 dependencies:
-  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.26.0 }
+  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.27.0 }
   common_verification: { git: "https://github.com/pulp-platform/common_verification.git", version: 0.2.3 }
   tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.2 }
 
@@ -40,7 +40,7 @@ sources:
   - src/axi_cdc_src.sv
   - src/axi_cut.sv
   - src/axi_delayer.sv
-  - src/axi_demux.sv
+  - src/axi_demux_simple.sv
   - src/axi_dw_downsizer.sv
   - src/axi_dw_upsizer.sv
   - src/axi_fifo.sv
@@ -49,6 +49,7 @@ sources:
   - src/axi_isolate.sv
   - src/axi_join.sv
   - src/axi_lite_demux.sv
+  - src/axi_lite_dw_converter.sv
   - src/axi_lite_from_mem.sv
   - src/axi_lite_join.sv
   - src/axi_lite_lfsr.sv
@@ -59,12 +60,15 @@ sources:
   - src/axi_lite_to_axi.sv
   - src/axi_modify_address.sv
   - src/axi_mux.sv
+  - src/axi_rw_join.sv
+  - src/axi_rw_split.sv
   - src/axi_serializer.sv
   - src/axi_slave_compare.sv
   - src/axi_throttle.sv
-  - src/axi_to_mem.sv
+  - src/axi_to_detailed_mem.sv
   # Level 3
   - src/axi_cdc.sv
+  - src/axi_demux.sv
   - src/axi_err_slv.sv
   - src/axi_dw_converter.sv
   - src/axi_from_mem.sv
@@ -72,13 +76,14 @@ sources:
   - src/axi_lfsr.sv
   - src/axi_multicut.sv
   - src/axi_to_axi_lite.sv
-  - src/axi_to_mem_banked.sv
-  - src/axi_to_mem_interleaved.sv
-  - src/axi_to_mem_split.sv
+  - src/axi_to_mem.sv
   # Level 4
   - src/axi_iw_converter.sv
   - src/axi_lite_xbar.sv
   - src/axi_xbar.sv
+  - src/axi_to_mem_banked.sv
+  - src/axi_to_mem_interleaved.sv
+  - src/axi_to_mem_split.sv
   # Level 5
   - src/axi_xp.sv
 
@@ -108,6 +113,7 @@ sources:
       - test/tb_axi_dw_upsizer.sv
       - test/tb_axi_fifo.sv
       - test/tb_axi_isolate.sv
+      - test/tb_axi_lite_dw_converter.sv
       - test/tb_axi_lite_mailbox.sv
       - test/tb_axi_lite_regs.sv
       - test/tb_axi_iw_converter.sv
